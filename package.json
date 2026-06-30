@@ -1,6 +1,6 @@
 {
   "name": "usmart-cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "uSMART 盈立证券命令行工具 - 让智能体与人类通过 CLI 操作 uSMART 交易与行情",
   "main": "src/cli.js",
   "type": "module",
