@@ -1,0 +1,41 @@
+{
+  "name": "usmart-cli",
+  "version": "1.0.0",
+  "description": "uSMART 盈立证券命令行工具 - 让智能体与人类通过 CLI 操作 uSMART 交易与行情",
+  "main": "src/cli.js",
+  "type": "module",
+  "bin": {
+    "usmart": "bin/usmart"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "dev": "node src/cli.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "usmart",
+    "yingli",
+    "cli",
+    "trading",
+    "stock",
+    "ai-agent",
+    "lark-cli-like"
+  ],
+  "author": "carter",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yingli/usmart-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yingli/usmart-cli/issues"
+  },
+  "homepage": "https://github.com/yingli/usmart-cli#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "description": "usmart-cli 默认启动配置",
+  "commands": {
+    "dev": {
+      "description": "进入 CLI 开发环境",
+      "command": "cd /Users/carter/projects/yingli/usmart-cli"
+    },
+    "test": {
+      "description": "运行测试",
+      "command": "cd /Users/carter/projects/yingli/usmart-cli && echo 'No tests configured yet.'"
+    }
+  }
+}

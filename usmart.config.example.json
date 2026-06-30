@@ -1,0 +1,18 @@
+{
+  "_comment": "uSMART 账户与环境配置。复制为 usmart.config.json 后填入真实值，切勿提交到 git。",
+  "account": {
+    "lang": "1",
+    "channel": "YOUR_CHANNEL_ID",
+    "areaCode": "86",
+    "phoneNumber": "YOUR_PHONE_NUMBER",
+    "loginPassword": "YOUR_LOGIN_PASSWORD",
+    "tradePassword": "YOUR_6_DIGIT_TRADE_PASSWORD",
+    "publicKey": "BASE64_X509_PUBLIC_KEY",
+    "privateKey": "BASE64_PKCS8_PRIVATE_KEY"
+  },
+  "env": {
+    "tradeHost": "https://uat-trade.example.com",
+    "quoteHost": "https://uat-quote.example.com",
+    "type": 0
+  }
+}
