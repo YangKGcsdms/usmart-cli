@@ -98,8 +98,8 @@ usmart usmart api POST /quotes-openservice/api/v1/realtime --data '{"secuIds":["
 ## 安全规则
 
 - **不要**把 `usmart.json` 提交到 git。
-- 交易写操作必须先 `--dry-run` 预览（待实现）。
-- 写操作不带 `--yes` 会退出码 10，返回 `confirmation_required`。
+- 交易写操作可先 `--dry-run` 预览：只打印将发起的请求（method/url/body），不发送、不需要 `--yes`。
+- 写操作不带 `--yes`（且非 dry-run）会退出码 10，返回 `confirmation_required`。
 
 ## 错误处理
 

@@ -9,7 +9,7 @@
 3. **CLI 内置 `usmart skills` 命令**：让 agent 在运行时读取与当前 CLI 版本一致的 skill 内容，并提示本地 skill 是否过期。
 4. **不同 agent 的 skill 格式是统一的 `SKILL.md`**（YAML frontmatter + Markdown），但安装路径不同；`npx skills` 会自动处理。
 
-所以用户的设想完全可行：**`npm install -g usmart-cli` + `npx skills add yingli/usmart-cli -g -y`** 之后，Claude Code / Cursor / Codex / Kimi Code CLI 等都能操作盈立。
+所以用户的设想完全可行：**`npm install -g usmart-cli` + `npx skills add YangKGcsdms/usmart-cli -g -y`** 之后，Claude Code / Cursor / Codex / Kimi Code CLI 等都能操作盈立。
 
 ---
 
@@ -135,7 +135,7 @@ metadata:
 ### 推荐架构
 
 ```
-yingli/usmart-cli（GitHub 仓库）
+YangKGcsdms/usmart-cli（GitHub 仓库）
 ├── bin/usmart              # Node CLI 入口
 ├── package.json            # npm 包：usmart-cli
 ├── dist/                   # 打包产物
@@ -166,7 +166,7 @@ npx usmart-cli@latest install
 
 这个命令会做四件事：
 1. 全局安装 `usmart-cli`
-2. 自动调用 `npx skills add yingli/usmart-cli -y -g` 安装 skills
+2. 自动调用 `npx skills add YangKGcsdms/usmart-cli -y -g` 安装 skills
 3. 引导 `usmart config init`
 4. 引导 `usmart auth login`
 
@@ -174,7 +174,7 @@ npx usmart-cli@latest install
 
 ```bash
 npm install -g usmart-cli
-npx skills add yingli/usmart-cli -y -g
+npx skills add YangKGcsdms/usmart-cli -y -g
 usmart config init
 usmart auth login
 ```
@@ -312,7 +312,7 @@ metadata:
 | 问题 | 答案 |
 |---|---|
 | 能不能打包成 npm CLI？ | ✅ 能，且比 lark-cli 更简单（纯 Node） |
-| npm install 后智能体能不能操作盈立？ | ✅ 能，但需要配套 `npx skills add yingli/usmart-cli` 安装 skills |
+| npm install 后智能体能不能操作盈立？ | ✅ 能，但需要配套 `npx skills add YangKGcsdms/usmart-cli` 安装 skills |
 | Claude/Cursor/Codex 都能支持吗？ | ✅ 都能，`npx skills` 支持 70+ agent |
 | 一个包搞定所有 agent？ | ✅ 可以，`npx usmart-cli@latest install` 一键安装 CLI + skills |
 | 是否需要自己为每个 agent 写不同格式？ | ❌ 不需要，统一 `SKILL.md` 格式即可 |
@@ -321,10 +321,10 @@ metadata:
 
 ## 建议的 MVP
 
-1. **把现有 `.claude/skills/` 移到 `skills/` 目录**，让 `npx skills add yingli/usmart-cli` 能扫描到。
+1. **把现有 `.claude/skills/` 移到 `skills/` 目录**，让 `npx skills add YangKGcsdms/usmart-cli` 能扫描到。
 2. **实现一个真实 domain**（如 `usmart account +me`），打通登录 → 调用 → 输出。
 3. **添加 `usmart skills list` / `usmart skills read`**，让 agent 能读取内置 skill。
-4. **添加 `usmart install` 安装向导**，自动调用 `npx skills add yingli/usmart-cli -y -g`。
+4. **添加 `usmart install` 安装向导**，自动调用 `npx skills add YangKGcsdms/usmart-cli -y -g`。
 5. **发布 0.1.0 到 npm**，仓库公开后可被 `npx skills add` 使用。
 6. **验证完整流程**：
    ```bash

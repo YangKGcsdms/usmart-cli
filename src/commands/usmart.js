@@ -1,7 +1,7 @@
 import fs from 'fs';
-import path from 'path';
 import { getDefaultConfigPath, readUsmartConfig, writeUsmartConfig } from '../lib/usmart-config.js';
 import { UsmartSessionManager } from '../lib/session.js';
+import { CONFIG_EXAMPLE_PATH } from '../lib/meta.js';
 
 const HIGH_RISK_COMMANDS = new Set([
   'place-order',
@@ -26,11 +26,12 @@ export function registerUsmart(program) {
         console.error(`配置文件已存在：${configPath}`);
         process.exit(1);
       }
-      const examplePath = path.join(process.cwd(), 'usmart.config.example.json');
-      let example = {};
-      if (fs.existsSync(examplePath)) {
-        example = JSON.parse(fs.readFileSync(examplePath, 'utf-8'));
+      // 从包内定位示例文件，而非 cwd —— 全局安装后用户可能在任意目录运行。
+      if (!fs.existsSync(CONFIG_EXAMPLE_PATH)) {
+        console.error(`找不到配置示例文件：${CONFIG_EXAMPLE_PATH}`);
+        process.exit(1);
       }
+      const example = JSON.parse(fs.readFileSync(CONFIG_EXAMPLE_PATH, 'utf-8'));
       delete example._comment;
       writeUsmartConfig(example, configPath);
       fs.chmodSync(configPath, 0o600);
@@ -59,7 +60,12 @@ export function registerUsmart(program) {
     .option('--config <path>', '配置文件路径')
     .action((options) => {
       const session = new UsmartSessionManager(readUsmartConfig(options.config));
-      printJson({ loggedIn: session.isLoggedIn(), tradeUnlocked: session.isTradeUnlocked() });
+      printJson({
+        ok: true,
+        loggedIn: session.isLoggedIn(),
+        tradeUnlocked: session.isTradeUnlocked(),
+        token: maskToken(session.getClient().token),
+      });
     });
 
   // =========================================================
@@ -391,6 +397,8 @@ export function registerUsmart(program) {
       const body = parseData(options.data);
       const requireTrade = options.requireTrade;
       const useQuote = options.quote;
+      const dryRun = !!(command.optsWithGlobals && command.optsWithGlobals().dryRun);
+      if (dryRun) session.getClient().dryRun = true;
 
       const result = await session.call(async (client) => {
         if (useQuote) {
@@ -399,6 +407,10 @@ export function registerUsmart(program) {
         return client.postTrade(pathArg, body);
       }, { requireTrade });
 
+      if (dryRun && result && result.__dryRun) {
+        printJson({ ok: true, dryRun: true, request: result.__dryRun });
+        return;
+      }
       printJson(result);
     });
 }
@@ -420,8 +432,10 @@ function withConfig(action, { requireTrade = false, highRisk = false, readOnly =
   return async (options, command) => {
     const cmdName = command.name();
     const globalOpts = command.optsWithGlobals ? command.optsWithGlobals() : {};
+    const dryRun = !!globalOpts.dryRun;
 
-    if (highRisk && !globalOpts.yes) {
+    // dry-run 可在不带 --yes 时预览高风险写操作；只有真正执行才需要 --yes。
+    if (highRisk && !dryRun && !globalOpts.yes) {
       printJson({
         ok: false,
         error: {
@@ -436,6 +450,7 @@ function withConfig(action, { requireTrade = false, highRisk = false, readOnly =
 
     const config = readUsmartConfig(options.config);
     const session = new UsmartSessionManager(config);
+    if (dryRun) session.getClient().dryRun = true;
 
     if (readOnly) {
       await action(session, options);
@@ -449,6 +464,10 @@ function withConfig(action, { requireTrade = false, highRisk = false, readOnly =
     }
 
     const result = await action(session, options);
+    if (dryRun && result && result.__dryRun) {
+      printJson({ ok: true, dryRun: true, request: result.__dryRun });
+      return;
+    }
     printJson(result);
   };
 }

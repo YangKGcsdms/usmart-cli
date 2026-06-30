@@ -1,4 +1,14 @@
-# Skill: cli-dev
+---
+name: usmart-cli-dev
+version: 1.0.0
+description: "usmart-cli 项目自身的开发规范：新增/修改 CLI 命令、命令设计、配置、输出格式与测试。当在本仓库开发 CLI 时使用。"
+metadata:
+  requires:
+    bins: ["node"]
+  cliHelp: "usmart --help"
+---
+
+# Skill: usmart-cli-dev
 
 ## 触发场景
 

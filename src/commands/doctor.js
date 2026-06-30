@@ -1,32 +1,42 @@
-import { readConfig } from '../lib/config.js';
-import { createClient } from '../lib/client.js';
+import fs from 'fs';
+import { getDefaultConfigPath } from '../lib/usmart-config.js';
+import { loadSession, getSessionFilePath } from '../lib/session-cache.js';
 
 export function registerDoctor(program) {
   program
     .command('doctor')
-    .description('健康检查：配置、认证、网络连通性')
-    .option('--profile <name>', 'profile 名称', 'default')
-    .action(async (options) => {
-      const profile = options.profile;
+    .description('健康检查：配置文件、必填字段、会话缓存')
+    .option('--config <path>', '配置文件路径')
+    .action((options) => {
+      const configPath = options.config || getDefaultConfigPath();
       const checks = [];
 
-      const cfg = readConfig(profile);
-      checks.push({ item: '配置存在', ok: !!cfg, detail: cfg ? '已找到' : '未找到' });
-      checks.push({ item: 'base_url 配置', ok: !!cfg?.base_url, detail: cfg?.base_url || '缺失' });
-      checks.push({ item: 'token 存在', ok: !!cfg?.token, detail: cfg?.token ? '已登录' : '未登录' });
+      const exists = fs.existsSync(configPath);
+      checks.push({ item: '配置文件存在', ok: exists, detail: exists ? configPath : `缺失，运行 usmart usmart config-init` });
 
-      if (cfg?.base_url) {
+      let config = null;
+      if (exists) {
         try {
-          const client = await createClient(profile);
-          await client.get('/ping');
-          checks.push({ item: '后端连通性', ok: true, detail: `${cfg.base_url}/ping 可达` });
+          config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
         } catch (err) {
-          checks.push({ item: '后端连通性', ok: false, detail: err.message });
+          checks.push({ item: '配置文件可解析', ok: false, detail: err.message });
         }
       }
 
-      console.log(JSON.stringify(checks, null, 2));
-      const allOk = checks.every(c => c.ok);
-      process.exit(allOk ? 0 : 1);
+      if (config) {
+        const accountFields = ['lang', 'channel', 'areaCode', 'phoneNumber', 'loginPassword', 'tradePassword', 'publicKey', 'privateKey'];
+        const missingAccount = accountFields.filter((f) => !config.account || !config.account[f]);
+        checks.push({ item: 'account 字段完整', ok: missingAccount.length === 0, detail: missingAccount.length ? `缺失：${missingAccount.join(', ')}` : '完整' });
+
+        const envFields = ['tradeHost', 'quoteHost'];
+        const missingEnv = envFields.filter((f) => !config.env || !config.env[f]);
+        checks.push({ item: 'env 字段完整', ok: missingEnv.length === 0, detail: missingEnv.length ? `缺失：${missingEnv.join(', ')}` : `tradeHost=${config.env?.tradeHost}` });
+
+        const session = loadSession(config);
+        checks.push({ item: '会话缓存', ok: true, detail: session && session.token ? `已登录（${getSessionFilePath()}），tradeUnlocked=${session.tradeUnlocked}` : '无缓存 token（首次调用会自动登录）' });
+      }
+
+      console.log(JSON.stringify({ ok: checks.every((c) => c.ok), checks }, null, 2));
+      process.exit(checks.every((c) => c.ok) ? 0 : 1);
     });
 }

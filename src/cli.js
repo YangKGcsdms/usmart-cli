@@ -1,15 +1,10 @@
 import { Command } from 'commander';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import path from 'path';
-import { registerConfig } from './commands/config.js';
-import { registerAuth } from './commands/auth.js';
 import { registerDoctor } from './commands/doctor.js';
-import { registerApi } from './commands/api.js';
 import { registerUsmart } from './commands/usmart.js';
+import { registerSkills } from './commands/skills.js';
+import { readPackageJson } from './lib/meta.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+const pkg = readPackageJson();
 
 export function run(argv) {
   const program = new Command();
@@ -24,11 +19,9 @@ export function run(argv) {
     .option('--dry-run', '只打印请求，不执行')
     .option('--yes', '自动确认高风险操作');
 
-  registerConfig(program);
-  registerAuth(program);
-  registerDoctor(program);
-  registerApi(program);
   registerUsmart(program);
+  registerDoctor(program);
+  registerSkills(program);
 
   program.parse(argv);
 }

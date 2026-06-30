@@ -56,9 +56,9 @@
 | **usmart-auth** | 初始化配置、登录、登出、查看状态、doctor | [SKILL](skills/usmart-auth/SKILL.md) |
 | **usmart-api-to-skill** | 把新的 uSMART API 封装成 CLI 命令或 Skill | [SKILL](skills/usmart-api-to-skill/SKILL.md) |
 | **usmart** | uSMART 盈立证券 API：持仓、资产、行情、下单、撤单 | [SKILL](skills/usmart/SKILL.md) |
-| cli-dev | CLI 项目本身的开发规范、命令设计、测试 | [SKILL](skills/cli-dev/SKILL.md) |
+| usmart-cli-dev | CLI 项目本身的开发规范、命令设计、测试 | [SKILL](skills/usmart-cli-dev/SKILL.md) |
 
-> 这些 skill 同时会被 `npx skills add yingli/usmart-cli` 分发到 Claude Code / Cursor / Codex 等 agent。
+> 这些 skill 同时会被 `npx skills add YangKGcsdms/usmart-cli`（或 `usmart install`）分发到 Claude Code / Cursor / Codex 等 agent。
 
 ## 协作 / 流程约定
 

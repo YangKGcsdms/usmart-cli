@@ -1,4 +1,5 @@
 import { UsmartClient, isSuccess } from './usmart-client.js';
+import { loadSession, saveSession, clearSession } from './session-cache.js';
 
 export const CODE_TOKEN_INVALID = '300101';
 export const CODE_TRADE_LOCKED = '409984';
@@ -13,6 +14,23 @@ export class UsmartSessionManager {
     this.client = new UsmartClient(config);
     this.loggedIn = false;
     this.tradeUnlocked = false;
+
+    // 复用磁盘上缓存的 token / 解锁状态（若配置指纹一致）。
+    // token 失效时由 call() 的自动重登重试兜底。
+    const cached = loadSession(config);
+    if (cached && cached.token) {
+      this.client.token = cached.token;
+      this.loggedIn = true;
+      this.tradeUnlocked = !!cached.tradeUnlocked;
+    }
+  }
+
+  persist() {
+    if (this.client.dryRun) return; // dry-run 不落盘任何 token
+    saveSession(this.config, {
+      token: this.client.token,
+      tradeUnlocked: this.tradeUnlocked,
+    });
   }
 
   /**
@@ -24,6 +42,7 @@ export class UsmartSessionManager {
     if (isSuccess(result)) {
       this.loggedIn = true;
       this.tradeUnlocked = false;
+      this.persist();
     } else {
       throw new Error(`[uSMART] 登录失败：${result.msg || result.message || JSON.stringify(result)}`);
     }
@@ -38,6 +57,7 @@ export class UsmartSessionManager {
     const result = await this.client.tradeLogin();
     if (isSuccess(result)) {
       this.tradeUnlocked = true;
+      this.persist();
     } else {
       throw new Error(`[uSMART] 交易解锁失败：${result.msg || result.message || JSON.stringify(result)}`);
     }
@@ -49,6 +69,8 @@ export class UsmartSessionManager {
   invalidateToken() {
     this.loggedIn = false;
     this.tradeUnlocked = false;
+    this.client.token = '';
+    clearSession();
   }
 
   /**
@@ -56,6 +78,7 @@ export class UsmartSessionManager {
    */
   invalidateTradeUnlock() {
     this.tradeUnlocked = false;
+    if (this.client.token) this.persist();
   }
 
   getClient() {

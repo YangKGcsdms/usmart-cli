@@ -1,7 +1,14 @@
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import { describe, it, beforeEach, afterEach, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'crypto';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { UsmartSessionManager, CODE_TOKEN_INVALID } from '../src/lib/session.js';
+
+// 把会话缓存隔离到临时目录，避免污染真实 ~/.config 且保证测试间互不干扰。
+const TMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'usmart-test-'));
+process.env.USMART_CONFIG_DIR = TMP_DIR;
 
 function generateConfig() {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -29,6 +36,8 @@ describe('UsmartSessionManager', () => {
   let responses = [];
 
   beforeEach(() => {
+    // 清掉上一个测试写入的会话缓存，保证每个用例从未登录态开始。
+    fs.rmSync(path.join(TMP_DIR, 'session.json'), { force: true });
     originalFetch = globalThis.fetch;
     responses = [];
     globalThis.fetch = async (url, init) => {

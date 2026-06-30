@@ -126,7 +126,7 @@ usmart usmart api POST /quotes-openservice/api/v1/realtime --data '{"secuIds":["
 ### 安装 Skills
 
 ```bash
-npx skills add yingli/usmart-cli -y -g
+npx skills add YangKGcsdms/usmart-cli -y -g
 ```
 
 安装后，Claude Code / Cursor / Codex 等 Agent 即可调用 `usmart` 命令。
@@ -140,7 +140,7 @@ npx skills add yingli/usmart-cli -y -g
 ## 开发
 
 ```bash
-git clone https://github.com/yingli/usmart-cli.git
+git clone https://github.com/YangKGcsdms/usmart-cli.git
 cd usmart-cli
 npm install
 npm test

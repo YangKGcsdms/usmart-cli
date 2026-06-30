@@ -7,6 +7,16 @@
   "bin": {
     "usmart": "bin/usmart"
   },
+  "files": [
+    "bin",
+    "src",
+    "skills",
+    "scripts/postinstall.js",
+    "usmart.config.example.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
     "dev": "node src/cli.js",
@@ -25,12 +35,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yingli/usmart-cli.git"
+    "url": "https://github.com/YangKGcsdms/usmart-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/yingli/usmart-cli/issues"
+    "url": "https://github.com/YangKGcsdms/usmart-cli/issues"
   },
-  "homepage": "https://github.com/yingli/usmart-cli#readme",
+  "homepage": "https://github.com/YangKGcsdms/usmart-cli#readme",
   "engines": {
     "node": ">=18.0.0"
   },

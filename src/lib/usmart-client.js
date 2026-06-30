@@ -12,6 +12,12 @@ export class UsmartClient {
     this.account = config.account;
     this.env = config.env;
     this.token = '';
+    // dry-run 模式下不发任何网络请求，返回请求描述符（用于预览写操作）。
+    this.dryRun = false;
+  }
+
+  dryRunResult(method, url, body) {
+    return { code: '0', __dryRun: { method, url, body } };
   }
 
   // =========================================================
@@ -19,6 +25,7 @@ export class UsmartClient {
   // =========================================================
 
   async login() {
+    if (this.dryRun) return { code: '0', data: { token: '<dry-run>' } };
     const body = {
       phoneNumber: encryptField(this.account.phoneNumber, this.account.publicKey),
       password: encryptField(this.account.loginPassword, this.account.publicKey),
@@ -36,6 +43,7 @@ export class UsmartClient {
   }
 
   async tradeLogin() {
+    if (this.dryRun) return { code: '0' };
     const body = {
       password: encryptField(this.account.tradePassword, this.account.publicKey),
     };
@@ -54,6 +62,7 @@ export class UsmartClient {
   // =========================================================
 
   async postTrade(path, body) {
+    if (this.dryRun) return this.dryRunResult('POST', this.env.tradeHost + path, body);
     const requestId = nextRequestId();
     const bodyStr = JSON.stringify(body);
     const xSign = signBody(bodyStr, this.account.privateKey);
@@ -65,6 +74,7 @@ export class UsmartClient {
   }
 
   async postQuote(path, body) {
+    if (this.dryRun) return this.dryRunResult('POST', this.env.quoteHost + path, body);
     const requestId = nextRequestId();
     const timestamp = Math.floor(Date.now() / 1000);
     const bodyStr = JSON.stringify(body);
