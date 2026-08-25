@@ -49,6 +49,15 @@ usmart order place --stock-code 00700 --exchange-type 0 \
 `serialNo`（19 位幂等流水号）由 CLI 自动生成，需要自己控制时用 `--serial-no`。
 成功返回 `data.entrustId` —— **后续改单/撤单/查明细都靠它，务必留存**。
 
+## ⚠️ actionType 的反向语义
+
+两个接口的 `actionType` 含义**相反**，CLI 已经替你处理好，但用 `usmart api` 裸调时务必注意：
+
+| 接口 | 0 | 1 |
+|---|---|---|
+| 委托改撤单 `modify-order` | **撤单** | **改单** |
+| IPO 改撤单 `modify-ipo` | **改单** | **撤单** |
+
 ## 改单 / 撤单
 
 ```bash
