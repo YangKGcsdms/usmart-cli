@@ -76,5 +76,11 @@ usmart quote subscribe --topics rt.us.AAPL --duration 1m | jq -r '.data.latestPr
 CLI 内置客户端限流会自动等待，但**行情网关还会在 HTTP 层直接封禁**：突发过快会收到
 `HTTP_403`（openresty 返回的 HTML，不是业务错误码），需要等一段时间才恢复。
 
+CLI 除了分钟配额，还强制相邻两次行情请求的**最小间隔**（默认 400ms，`USMART_QUOTE_MIN_INTERVAL_MS` 可调），
+就是为了避免突发把自己打进 403。
+
 对策：批量查行情用 `realtime --secu-ids a,b,c` 一次拿多只；持续跟踪用 `subscribe`；
 不要写 `while true; do usmart quote realtime ...; done`。
+
+判断是不是被封：不带鉴权头直接 `curl` 同一个 path 会返回 **400**（说明路径没问题），
+而带鉴权的请求返回 **403**，就是被网关限流了，只能等待恢复。

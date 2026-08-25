@@ -173,6 +173,7 @@ usmart skills read usmart-order
 | `USMART_PROFILE` | 默认 profile |
 | `USMART_TIMEOUT_MS` | HTTP 超时，默认 20000 |
 | `USMART_NO_RATE_LIMIT` | 关闭客户端限流 |
+| `USMART_QUOTE_MIN_INTERVAL_MS` | 行情请求最小间隔，默认 400 |
 | `USMART_DEBUG` | 错误信封里带堆栈 |
 
 ## 开发

@@ -115,7 +115,7 @@ describe('integration: usmart-cli 只读命令', { skip: !ENABLED && 'set USMART
     });
   });
 
-  describe('quote', () => {
+  describe('quote', { skip: process.env.USMART_SKIP_QUOTE ? '行情网关限流中（HTTP_403），已跳过' : false }, () => {
     it('realtime 多只', () => { const j = expectOk(['quote', 'realtime', '--secu-ids', 'usAAPL,hk00700']); assert.equal(j.data.list.length, 2); });
     it('market-state hk/us/sh/sz', () => { for (const m of ['hk', 'us', 'sh', 'sz']) { const j = expectOk(['quote', 'market-state', '--market', m]); assert.equal(j.data.market, m); } });
     it('kline 日K', () => { const j = expectOk(['quote', 'kline', '--secu-id', 'usAAPL', '--type', '7', '--count', '5']); assert.ok(j.data.list.length > 0); });
@@ -161,7 +161,7 @@ describe('integration: usmart-cli 只读命令', { skip: !ENABLED && 'set USMART
 
   describe('api / dict / 输出格式 / 兼容别名', () => {
     it('api POST get-trade-status', () => expectOk(['api', 'POST', '/user-server/open-api/get-trade-status']));
-    it('api --quote', () => expectOk(['api', 'POST', '/quotes-openservice/api/v1/marketstate', '--quote', '--data', '{"market":"hk"}']));
+    it('api --quote', { skip: process.env.USMART_SKIP_QUOTE ? '行情网关限流中' : false }, () => expectOk(['api', 'POST', '/quotes-openservice/api/v1/marketstate', '--quote', '--data', '{"market":"hk"}']));
     it('api 404 → exit 2 + HTTP_404', () => { const r = run(['api', 'POST', '/no/such/path']); assert.equal(r.code, 2); assert.equal(r.json.error.code, 'HTTP_404'); assert.equal(r.json.error.http_status, 404); });
     it('api 业务错误 → exit 2 + 业务码 + hint', () => { const r = run(['api', 'POST', '/stock-order-server/open-api/modified-range', '--data', '{"entrustId":1,"newPrice":1}']); assert.equal(r.code, 2); assert.equal(r.json.error.code, '409933'); assert.ok(r.json.error.hint); });
     it('legacy: usmart usmart holding（带弃用提示）', () => { const r = run(['usmart', 'holding']); assert.equal(r.code, 0); assert.match(r.stderr, /已弃用/); assert.equal(String(r.json.code), '0'); });
@@ -172,10 +172,17 @@ describe('integration: usmart-cli 只读命令', { skip: !ENABLED && 'set USMART
     it('--format pretty', () => { const r = run(['--format', 'pretty', 'auth', 'trade-status']); assert.equal(r.code, 0); assert.match(r.stdout, /status: [01]/); });
     it('--jq 单值', () => { const r = run(['--jq', '.data.status', 'auth', 'trade-status']); assert.equal(r.code, 0); assert.match(r.stdout.trim(), /^[01]$/); });
     it('--jq 多值 → NDJSON 逐行', () => {
-      const r = run(['--jq', '.data.list[].stockCode', 'account', 'holding']);
-      assert.equal(r.code, 0);
+      // holding 的 data 本身就是数组
+      const r = run(['--jq', '.data[].stockCode', 'account', 'holding']);
+      assert.equal(r.code, 0, r.stdout);
       const lines = r.stdout.trim().split('\n').filter(Boolean);
+      assert.ok(lines.length >= 1);
       for (const l of lines) assert.doesNotMatch(l, /^\[|\]$/, `应逐行输出而不是数组：${l}`);
+    });
+    it('--jq 表达式错误 → exit 3', () => {
+      const r = run(['--jq', '.data.list[].nope', 'account', 'holding']);
+      assert.equal(r.code, 3);
+      assert.equal(r.json.error.type, 'jq_error');
     });
     it('dict list / get', () => {
       expectOk(['dict', 'list']);

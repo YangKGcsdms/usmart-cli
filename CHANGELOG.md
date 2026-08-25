@@ -54,7 +54,9 @@
 - `usmart dict` —— 30 张官方数据字典（市场、币种、订单状态、委托属性、K 线类型、市场状态、错误码限流等）
 - `--format table|csv|pretty`（表格按中文宽度对齐）、`--jq`（有 jq 用完整语法，否则内置路径选择器；多值输出 NDJSON）
 - `--profile` 多账号/多环境，`auth profiles` 列出全部
-- 客户端限流：行情高频 120/min、`basicinfo` 20/min，超限自动等待
+- 客户端限流：行情高频 120/min、`basicinfo` 20/min，超限自动等待；
+  并强制相邻行情请求的最小间隔（默认 400ms，`USMART_QUOTE_MIN_INTERVAL_MS` 可调）——
+  实测行情网关对突发敏感，短时间连打十几次会被 openresty 直接 403 封禁一段时间
 - HTTP 超时（`USMART_TIMEOUT_MS`，默认 20s）与行情请求的网络错误重试
 - `doctor` 增强：Node 版本、目录与文件权限、模板占位符检测、`--online` 真实登录探测
 - 官方错误码表内置到 CLI，错误信封自动带 `hint`
