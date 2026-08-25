@@ -90,6 +90,6 @@ usmart auth login-captcha --captcha 123456
 | 退出码 1 + `config_invalid` | `error.details.missing` 里是缺的字段 |
 | `login_failed` | 检查 `phoneNumber` / `loginPassword` / `areaCode` / `publicKey`；必要时改走验证码登录 |
 | `trade_unlock_failed` + `310104` | 交易密码错，**别重试**，`301002` 会锁定 |
-| RSA 报错 `publicKey/privateKey 格式错误` | 必须是 Base64 编码的 DER（公钥 X509/SPKI、私钥 PKCS8），不是 PEM |
+| RSA 报错 `publicKey/privateKey 格式错误` | 必须是 Base64 编码的 DER（公钥 X509/SPKI、私钥 PKCS8），不是 PEM。若提示「看起来是被截断了」，说明复制时丢了尾巴，按提示里给出的字符数重新完整复制 |
 | `doctor` 报「无模板占位符」失败 | 配置里还留着 `YOUR_xxx` / `BASE64_xxx` |
 | 行情 `HTTP_403` | 网关限流，降频等待；不是配置问题 |

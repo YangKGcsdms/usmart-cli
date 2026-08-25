@@ -36,6 +36,21 @@ describe('rsa', () => {
     assert.throws(() => signBody('{}', 'not-a-key'), /privateKey 格式错误/);
   });
 
+  it('私钥被截断时明确指出少了多少字节与字符（最常见的配置错误）', () => {
+    const full = privateKeyBase64;
+    const truncated = full.slice(0, full.length - 200);
+    assert.throws(() => signBody('{}', truncated), (e) => {
+      assert.match(e.message, /看起来是被截断了/);
+      assert.match(e.message, /DER 头声明 \d+ 字节，实际只有 \d+ 字节/);
+      assert.match(e.message, /完整应为 \d+ 个字符，少了 \d+ 个/);
+      return true;
+    });
+  });
+
+  it('完整密钥不会误报截断', () => {
+    assert.doesNotThrow(() => signBody('{}', privateKeyBase64));
+  });
+
   it('signBody 对 JSON body 签名，可用公钥验签', () => {
     const body = JSON.stringify({ phoneNumber: 'enc', password: 'enc', areaCode: '86' });
     const sig = signBody(body, privateKeyBase64);

@@ -4,6 +4,20 @@ const RSA_ALGORITHM = 'RSA/ECB/PKCS1Padding';
 const SIGN_ALGORITHM = 'RSA-MD5';
 
 /**
+ * DER 是 TLV 结构，开头 `30 82 LL LL` 声明了整体长度。
+ * 密钥被截断（复制粘贴丢尾巴）是最常见的配置错误，单看 asn1 报错完全看不出来，
+ * 所以这里比对「声明长度」与「实际字节数」，直接告诉用户少了多少。
+ */
+function truncationHint(buf, base64Len) {
+  if (buf.length < 4 || buf[0] !== 0x30 || buf[1] !== 0x82) return '';
+  const declared = ((buf[2] << 8) | buf[3]) + 4;
+  if (buf.length >= declared) return '';
+  const wantChars = Math.ceil(declared / 3) * 4;
+  return `\n看起来是被截断了：DER 头声明 ${declared} 字节，实际只有 ${buf.length} 字节（少 ${declared - buf.length} 字节）。` +
+         `\n当前 Base64 长度 ${base64Len}，完整应为 ${wantChars} 个字符，少了 ${wantChars - base64Len} 个 —— 请重新完整复制一次密钥。`;
+}
+
+/**
  * 加载 X509 公钥（Base64 编码）。
  */
 export function loadPublicKey(base64Key) {
@@ -15,7 +29,8 @@ export function loadPublicKey(base64Key) {
       type: 'spki',
     });
   } catch (err) {
-    throw new Error(`publicKey 格式错误，应为 Base64 编码的 X509/SPKI 公钥：${err.message}`);
+    const buf = Buffer.from(base64Key, 'base64');
+    throw new Error(`publicKey 格式错误，应为 Base64 编码的 X509/SPKI 公钥：${err.message}${truncationHint(buf, base64Key.length)}`);
   }
 }
 
@@ -31,7 +46,8 @@ export function loadPrivateKey(base64Key) {
       type: 'pkcs8',
     });
   } catch (err) {
-    throw new Error(`privateKey 格式错误，应为 Base64 编码的 PKCS8 私钥：${err.message}`);
+    const buf = Buffer.from(base64Key, 'base64');
+    throw new Error(`privateKey 格式错误，应为 Base64 编码的 PKCS8 私钥：${err.message}${truncationHint(buf, base64Key.length)}`);
   }
 }
 

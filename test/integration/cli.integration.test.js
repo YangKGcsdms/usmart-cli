@@ -115,7 +115,28 @@ describe('integration: usmart-cli 只读命令', { skip: !ENABLED && 'set USMART
     });
   });
 
-  describe('quote', { skip: process.env.USMART_SKIP_QUOTE ? '行情网关限流中（HTTP_403），已跳过' : false }, () => {
+  /**
+ * 行情网关可能对整个渠道拒绝 REST 访问（HTTP 403，openresty，无业务码）。
+ * 这种情况下跳过并说明原因；**其他任何失败都照常报错**，避免把「网关拒绝」
+ * 和「代码写坏了」混为一谈。
+ */
+function quoteGatewayState() {
+  if (process.env.USMART_SKIP_QUOTE) return { ok: false, reason: '显式设置了 USMART_SKIP_QUOTE' };
+  const r = run(['quote', 'market-state', '--market', 'hk']);
+  if (r.code === 0) return { ok: true };
+  const code = r.json?.error?.code;
+  if (code === 'HTTP_403') {
+    return { ok: false, reason: '行情网关对本渠道返回 HTTP 403（token 有效但无 REST 行情权限）——非代码问题，需联系 uSMART；WebSocket 推送用例仍会运行' };
+  }
+  if (code === 'HTTP_401') {
+    return { ok: false, reason: '行情网关返回 HTTP 401：token 无效，请先 usmart auth logout && usmart auth login' };
+  }
+  return { ok: true }; // 其他失败让用例自己暴露出来
+}
+
+const QUOTE = quoteGatewayState();
+
+describe('quote (REST)', { skip: QUOTE.ok ? false : QUOTE.reason }, () => {
     it('realtime 多只', () => { const j = expectOk(['quote', 'realtime', '--secu-ids', 'usAAPL,hk00700']); assert.equal(j.data.list.length, 2); });
     it('market-state hk/us/sh/sz', () => { for (const m of ['hk', 'us', 'sh', 'sz']) { const j = expectOk(['quote', 'market-state', '--market', m]); assert.equal(j.data.market, m); } });
     it('kline 日K', () => { const j = expectOk(['quote', 'kline', '--secu-id', 'usAAPL', '--type', '7', '--count', '5']); assert.ok(j.data.list.length > 0); });
@@ -125,6 +146,9 @@ describe('integration: usmart-cli 只读命令', { skip: !ENABLED && 'set USMART
     it('tick', () => { const j = expectOk(['quote', 'tick', '--secu-id', 'usAAPL', '--count', '5']); assert.ok(Array.isArray(j.data.list)); });
     it('order-book', () => { const j = expectOk(['quote', 'order-book', '--secu-id', 'hk00700']); assert.ok(j.data); });
     it('basicinfo（低频 20/min，仅调一次）', () => { const j = expectOk(['quote', 'basicinfo', '--market', 'hk']); assert.ok(j.data.list.length > 100); assert.ok('lotSize' in j.data.list[0]); });
+  });
+
+  describe('quote (WebSocket 推送 —— 不受 REST 403 影响，始终运行)', () => {
     it('subscribe：WebSocket 鉴权 + 订阅 + 收数据 + 退出', () => {
       const r = run(['quote', 'subscribe', '--topics', 'rt.hk.00700,ob.hk.00700,rt.us.AAPL', '--duration', '10s'], { timeout: 60_000 });
       assert.equal(r.code, 0, `exit=${r.code} stderr=${r.stderr}`);

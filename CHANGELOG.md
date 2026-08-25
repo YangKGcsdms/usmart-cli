@@ -11,6 +11,9 @@
   REST 侧走 `parseJsonSafe` 保留为字符串，WS 侧走原生 `JSON.parse` 是数字，
   同一字段两条链路类型不同。现在 WS 也走 `parseJsonSafe`。
 - 补充错误码 `107012`（非法 OPEN 请求：渠道凭据与环境不匹配）、`409985`（参数不合法）。
+- **密钥被截断时给出可执行的诊断**：复制粘贴丢尾巴是最常见的配置错误，但 OpenSSL 只会报
+  `asn1 encoding routines::not enough data`，完全看不出问题所在。现在会比对 DER 头声明的长度
+  与实际字节数，直接告诉你少了多少字节 / 多少个 Base64 字符。
 
 ### 新增
 
