@@ -99,6 +99,7 @@ usmart account flow --type 0                   # 入金记录
 usmart quote realtime --secu-ids usAAPL,hk00700
 usmart quote kline --secu-id usAAPL --type 7 --count 100
 usmart quote subscribe --topics rt.hk.00700,ob.us.AAPL --duration 30s   # 实时推送
+# 行情 REST 被网关 403 拒绝时，realtime / order-book 会自动降级到 WebSocket 取快照
 
 # 交易（先 dry-run，再 --yes）
 usmart order max-quantity --stock-code AAPL --exchange-type 5 --price 150

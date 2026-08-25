@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.1.0
+
+### 新增：行情 REST 被拒时自动降级到 WebSocket
+
+行情 REST 与交易是**分开授权**的。渠道没有 REST 行情权限时，网关直接返回 HTTP 403
+（token 有效），但**同一 token 的 WebSocket 推送不受影响**。
+
+`quote realtime` 与 `quote order-book` 现在会在收到 403 时自动改用推送取快照，
+返回**与 REST 完全相同的响应形状**，下游代码无需改动：
+
+```bash
+usmart quote realtime --secu-ids hk00700,hk09988
+# [usmart] 行情 REST 返回 403，降级到 WebSocket 推送取快照…
+# {"code":0,"msg":"success","data":{"list":[...]},"_via":"websocket","_note":"..."}
+```
+
+- `_via: "websocket"` 与 `_note` 标明数据来源，便于区分
+- `--ws-timeout <t>` 调整等待时长（默认 12s）
+- `--no-ws-fallback` 关闭降级，保持原样返回 403
+- **只对「取当前快照」语义的接口降级**：K 线、分时、逐笔、市场状态、基础信息
+  在推送协议里没有对应能力，无法降级，仍按原样返回错误
+- **推送只在行情变动时才推**：非交易时段、停牌或冷门标的可能收不到数据，
+  此时返回 `push_no_data` 并说明原因，而不是假装无数据
+
+### 修复
+
+- `--no-ws-fallback` 曾不生效：commander 对 `--no-<name>` 生成的属性名是 `<name>`
+  （缺省 true），不是 `no<Name>`。已修正并补单测锁住该语义。
+
 ## 2.0.5
 
 ### 改进

@@ -101,7 +101,17 @@ CLI 除了分钟配额，还强制相邻两次行情请求的**最小间隔**（
 同一 token 的 **WebSocket 推送仍然正常**——说明行情数据权限还在，只有 REST 这一层被拒。
 所以遇到持续 403，不要干等、不要反复换密钥，直接找官方确认该渠道的 REST 行情权限。
 
-**降级方案**：用 `usmart quote subscribe` 拿实时行情、逐笔和买卖盘，不受该限制影响。
+**自动降级**：`quote realtime` 与 `quote order-book` 遇到 403 会**自动改用 WebSocket 取快照**，
+返回形状与 REST 一致，输出里带 `_via: "websocket"` 标明来源：
+
+```bash
+usmart quote realtime --secu-ids hk00700          # 403 时自动降级，照常拿到报价
+usmart quote realtime --secu-ids hk00700 --ws-timeout 20s
+usmart quote realtime --secu-ids hk00700 --no-ws-fallback   # 关闭降级，直接报 403
+```
+
+注意：**推送只在行情变动时才推**，非交易时段或停牌标的会返回 `push_no_data`。
+K 线、分时、逐笔、市场状态、基础信息**无法降级**（推送协议里没有这些能力）。
 
 ## 历史 K 线的标的额度
 
