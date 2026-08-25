@@ -175,6 +175,7 @@ usmart skills read usmart-order
 | `USMART_NO_RATE_LIMIT` | 关闭客户端限流 |
 | `USMART_QUOTE_MIN_INTERVAL_MS` | 行情请求最小间隔，默认 400 |
 | `USMART_DEBUG` | 错误信封里带堆栈 |
+| `USMART_SKIP_QUOTE` | 集成测试专用：跳过行情用例（行情网关被 403 封禁时用） |
 
 ## 开发
 
@@ -183,7 +184,13 @@ git clone https://github.com/YangKGcsdms/usmart-cli.git
 cd usmart-cli && npm install
 npm test                   # 单元测试（全 mock，不联网）
 npm run test:integration   # 只读集成测试（需真实配置；不发送任何交易）
+
+# 行情网关被限流封禁（HTTP 403）时，可临时跳过行情用例
+USMART_SKIP_QUOTE=1 npm run test:integration
 ```
+
+集成测试**只跑只读命令**；20 条写操作（下单/改单/撤单/IPO 认购/期权/MA/密码/出金）
+只验证「不带 `--yes` 退出码 10」与「`--dry-run` 请求 URL 和 body 正确」，绝不真实发送。
 
 ## 架构
 

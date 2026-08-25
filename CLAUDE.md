@@ -67,7 +67,12 @@ npm run test:integration   # 只读集成测试，需 ~/.config/usmart-cli/usmar
 ```
 
 集成测试规则：**只跑只读命令**；所有写操作只验证「无 `--yes` 退出 10」与「`--dry-run` 请求正确」，
-**绝不真实发送交易**。行情接口有网关限流，密集重跑会 `HTTP_403`，需要等待恢复。
+**绝不真实发送交易**。
+
+行情接口有网关限流：密集重跑会被 openresty 直接 `HTTP_403` 封禁（无 `Retry-After`，实测可持续
+1 小时以上，官方文档未描述该行为）。被封期间用 `USMART_SKIP_QUOTE=1 npm run test:integration`
+跳过行情用例；**默认不跳过，让它响亮地失败**，避免把「被封」和「代码坏了」混为一谈。
+WebSocket 推送不受该封禁影响，可作为验证行情链路的替代手段。
 
 `test/skills.test.js` 会校验每个 SKILL.md 里出现的 `usmart` 命令都真实存在——**改命令名必须同步改 skill**。
 
