@@ -10,10 +10,14 @@ export const CODE_TRADE_LOCKED = '409984';
  * 职责：维护登录/交易解锁状态，按需自动登录/解锁，并像 AOP 一样透明处理过期重试。
  */
 export class UsmartSessionManager {
-  constructor(config, { profile = 'default', dryRun = false } = {}) {
+  constructor(config, { profile = 'default', dryRun = false, timeoutMs, quoteRetry } = {}) {
     this.config = config;
     this.profile = profile;
-    this.client = new UsmartClient(config, { dryRun });
+    this.client = new UsmartClient(config, {
+      dryRun,
+      ...(timeoutMs ? { timeoutMs } : {}),
+      ...(quoteRetry !== undefined ? { quoteRetry } : {}),
+    });
     this.loggedIn = false;
     this.tradeUnlocked = false;
 

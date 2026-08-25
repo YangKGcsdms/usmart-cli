@@ -174,6 +174,7 @@ usmart skills read usmart-order
 | `USMART_TIMEOUT_MS` | HTTP 超时，默认 20000 |
 | `USMART_NO_RATE_LIMIT` | 关闭客户端限流 |
 | `USMART_QUOTE_MIN_INTERVAL_MS` | 行情请求最小间隔，默认 400 |
+| `USMART_DOCTOR_TIMEOUT_MS` | `doctor --online` 联网探测超时，默认 8000 |
 | `USMART_DEBUG` | 错误信封里带堆栈 |
 | `USMART_SKIP_QUOTE` | 集成测试专用：跳过行情用例（行情网关被 403 封禁时用） |
 

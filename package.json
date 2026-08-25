@@ -1,6 +1,6 @@
 {
   "name": "usmart-cli",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "uSMART 盈立证券命令行工具 —— 覆盖官方 Open API 全部交易/行情/IPO/期权/MA 接口与 WebSocket 推送，面向 AI Agent 与人类",
   "main": "src/cli.js",
   "type": "module",

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.4
+
+### 修复
+
+- **`doctor --online` 可能长时间挂住**。2.0.2 给它加了行情 REST 权限探测后，
+  该探测沿用了默认的 20s 超时 + 一次重试，网关异常时单条 `doctor` 实测跑了 124 秒。
+  诊断命令必须有界：现在 doctor 的联网探测走 8s 超时（`USMART_DOCTOR_TIMEOUT_MS` 可调）
+  且不重试。
+
+### 新增
+
+- `UsmartClient` / `UsmartSessionManager` 支持 `timeoutMs` 与 `quoteRetry` 选项，
+  让调用方能按场景决定超时与重试策略。
+
 ## 2.0.3
 
 ### 新增

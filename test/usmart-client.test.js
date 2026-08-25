@@ -81,3 +81,29 @@ describe('UsmartClient', () => {
     assert.equal(client.token, 'new-token');
   });
 });
+
+describe('超时与重试可配置（诊断命令需要有界）', () => {
+  let originalFetch;
+  beforeEach(() => { originalFetch = globalThis.fetch; });
+  afterEach(() => { globalThis.fetch = originalFetch; });
+
+  it('quoteRetry: 0 时行情请求不重试', async () => {
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; const e = new Error('timeout'); e.name = 'TimeoutError'; throw e; };
+    const client = new UsmartClient(generateConfig(), { quoteRetry: 0 });
+    await assert.rejects(() => client.postQuote('/q', {}));
+    assert.equal(calls, 1, '不应重试');
+  });
+
+  it('默认行情请求会重试一次', async () => {
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; const e = new Error('timeout'); e.name = 'TimeoutError'; throw e; };
+    const client = new UsmartClient(generateConfig());
+    await assert.rejects(() => client.postQuote('/q', {}));
+    assert.equal(calls, 2, '默认应重试一次');
+  });
+
+  it('timeoutMs 可覆盖', () => {
+    assert.equal(new UsmartClient(generateConfig(), { timeoutMs: 1234 }).timeoutMs, 1234);
+  });
+});

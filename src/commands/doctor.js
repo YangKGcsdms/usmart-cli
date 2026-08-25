@@ -79,8 +79,10 @@ export function registerDoctor(program) {
         push('会话缓存', true, session && session.token ? `已登录（${getSessionFilePath(profile)}），tradeUnlocked=${session.tradeUnlocked}，updatedAt=${session.updatedAt}` : '无缓存 token（首次调用会自动登录）');
 
         if (options.online && !looksPlaceholder) {
+          // 诊断命令必须有界：短超时、不重试，绝不 hang 住等用户。
+          const PROBE_TIMEOUT_MS = Number(process.env.USMART_DOCTOR_TIMEOUT_MS) || 8000;
           try {
-            const mgr = new UsmartSessionManager(config, { profile });
+            const mgr = new UsmartSessionManager(config, { profile, timeoutMs: PROBE_TIMEOUT_MS, quoteRetry: 0 });
             await mgr.ensureLogin();
             const st = await mgr.call((c) => c.postTrade('/user-server/open-api/get-trade-status', {}));
             push('联网登录', true, `登录成功；服务端交易解锁状态=${isSuccess(st) ? st.data?.status : '未知'}`);
@@ -89,7 +91,7 @@ export function registerDoctor(program) {
           }
           // 行情 REST 与交易 REST 是分开授权的，单独探一次，避免误判为整体故障
           try {
-            const mgr = new UsmartSessionManager(config, { profile });
+            const mgr = new UsmartSessionManager(config, { profile, timeoutMs: PROBE_TIMEOUT_MS, quoteRetry: 0 });
             const q = await mgr.call((c) => c.postQuote('/quotes-openservice/api/v1/marketstate', { market: 'hk' }));
             push('行情 REST 可用', isSuccess(q), isSuccess(q) ? '正常' : `${q.msg}（code=${q.code}）`, 'warn');
           } catch (err) {

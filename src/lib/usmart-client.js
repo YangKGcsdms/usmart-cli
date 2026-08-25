@@ -15,7 +15,8 @@ const DEFAULT_TIMEOUT_MS = Number(process.env.USMART_TIMEOUT_MS) || 20_000;
  * - 两侧都要求 X-Request-Id 为 19 位唯一数字、X-Time 为 unix 秒时间戳。
  */
 export class UsmartClient {
-  constructor(config, { dryRun = false, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+  constructor(config, { dryRun = false, timeoutMs = DEFAULT_TIMEOUT_MS, quoteRetry = 1 } = {}) {
+    this.quoteRetry = quoteRetry;
     this.config = config;
     this.account = config.account;
     this.env = config.env;
@@ -104,7 +105,7 @@ export class UsmartClient {
     const url = this.env.quoteHost.replace(/\/+$/, '') + path;
     if (this.dryRun) return this.dryRunResult('POST', url, body, headers);
     await acquire(bucketForQuotePath(path));
-    return this.send(url, bodyStr, headers, { retry: 1 });
+    return this.send(url, bodyStr, headers, { retry: this.quoteRetry });
   }
 
   // =========================================================
