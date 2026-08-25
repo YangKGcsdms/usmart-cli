@@ -67,7 +67,12 @@ export function registerQuote(program) {
       opt('--count <n>', '每页条数', { type: 'int', default: '50' }),
       opt('--sort <n>', '0=时间逆序 1=时间顺序', { type: 'int', default: '0', choices: [0, 1] }),
     ],
-    action: (s, o, ctx) => s.call((c) => c.postQuote('/quotes-openservice/api/v1/tick', ctx.merge({ secuId: o.secuId, tradeTime: o.tradeTime, seq: o.seq, count: o.count, sortDirection: o.sort }))),
+    // 官方文档自相矛盾：参数表写 `seq`，同一页的请求示例却用 `start`（返回体里也叫 start）。
+    // 实测首页两者都能拿到数据，但分不出服务端究竟读哪个 —— 若它读 start 而我们只发 seq，
+    // 翻页会静默停在第一页。故两个字段一起发、取值相同。
+    action: (s, o, ctx) => s.call((c) => c.postQuote('/quotes-openservice/api/v1/tick', ctx.merge({
+      secuId: o.secuId, tradeTime: o.tradeTime, seq: o.seq, start: o.seq, count: o.count, sortDirection: o.sort,
+    }))),
   });
 
   quote.add({

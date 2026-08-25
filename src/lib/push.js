@@ -1,4 +1,5 @@
 import { CliError, EXIT, describeCode } from './errors.js';
+import { parseJsonSafe } from './json-safe.js';
 
 /**
  * 行情推送（WebSocket）客户端。官方协议：
@@ -38,13 +39,13 @@ export function validateTopics(topics) {
   }
 }
 
+/** 与 REST 侧保持一致：走 int64 安全解析，避免同一字段在两条链路里类型不同。 */
 function decodeData(data) {
   if (typeof data !== 'string') return data;
   try {
-    const text = Buffer.from(data, 'base64').toString('utf-8');
-    return JSON.parse(text);
+    return parseJsonSafe(Buffer.from(data, 'base64').toString('utf-8'));
   } catch {
-    try { return JSON.parse(data); } catch { return data; }
+    try { return parseJsonSafe(data); } catch { return data; }
   }
 }
 
@@ -99,7 +100,7 @@ export async function subscribe({ url, token, topics, onMessage, onEvent = () =>
     ws.onclose = (ev) => finish('server_close', settled ? undefined : new CliError('connection_closed', `连接关闭 code=${ev?.code}`, { exitCode: EXIT.ERROR, retryable: true }));
     ws.onmessage = (ev) => {
       let msg;
-      try { msg = JSON.parse(typeof ev.data === 'string' ? ev.data : ev.data.toString()); } catch { return; }
+      try { msg = parseJsonSafe(typeof ev.data === 'string' ? ev.data : ev.data.toString()); } catch { return; }
       switch (msg.op) {
         case 'auth':
           if (String(msg.code) !== '0') {
@@ -134,3 +135,6 @@ export async function subscribe({ url, token, topics, onMessage, onEvent = () =>
     };
   });
 }
+
+/** 仅供测试：验证 WS 与 REST 的解析一致性。 */
+export const _decodeForTest = decodeData;

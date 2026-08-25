@@ -1,0 +1,50 @@
+{
+  "_comment": "uSMART 官方《基础行情开放API》各接口的请求/响应示例，逐字抄自 https://api-doc.usmart8.com/zh-cn/quote-base.html。用于契约测试：断言 CLI 构造的请求体字段与官方示例一致，且能正确解析官方响应形状。",
+  "marketstate": {
+    "request": { "market": "sh" },
+    "response": { "code": 0, "msg": "success", "data": { "market": "sh", "desc": "已收盘", "tradingDayType": 1, "status": 7 } }
+  },
+  "basicinfo": {
+    "request": { "market": "hk" },
+    "response": { "code": 0, "msg": "success", "data": { "market": "hk", "list": [
+      { "symbol": "21922", "nameChs": "腾讯东亚零四沽B", "nameCht": "騰訊東亞零四沽B", "nameEn": "EATENCT@EP2004B", "type1": 5, "lotSize": 5000 },
+      { "symbol": "29260", "nameChs": "银证瑞银零八购A", "nameCht": "銀證瑞銀零八購A", "nameEn": "UB-CGS @EC2008A", "type1": 5, "lotSize": 5000 }
+    ] } }
+  },
+  "realtime": {
+    "request": { "secuIds": ["hk00700"] },
+    "response": { "code": 0, "msg": "success", "data": { "list": [
+      { "latestPrice": 376.8, "open": 379, "low": 376.8, "bidPrice": 376.6, "symbol": "00700", "close": 376.8, "high": 379.8,
+        "latestTime": 20191224120822000, "preClose": 377.8, "turnOver": 2403547632, "bidSize": 23100, "trdStatus": 6,
+        "market": "hk", "volume": 6360485, "askPrice": 376.8, "askSize": 12300 }
+    ] } }
+  },
+  "timeline": {
+    "request": { "secuId": "hk02208", "type": 0 },
+    "response": { "code": 0, "msg": "success", "data": { "list": [
+      { "latestTime": 20191224093000000, "preClose": 8.69, "price": 8.7, "avg": 8.629, "volume": 1400, "amount": 12080, "netchng": 0.01, "pctchng": 0.0012 }
+    ] } }
+  },
+  "kline": {
+    "request": { "secuId": "sh600001", "type": 7, "start": 0, "count": 0, "right": 0 },
+    "response": { "code": 0, "msg": "success", "data": { "list": [
+      { "latestTime": 20090716000000000, "preClose": 6.6, "open": 6.6, "close": 6.54, "high": 6.7, "low": 6.5, "volume": 41413014, "amount": 272594480 }
+    ] } }
+  },
+  "tick": {
+    "request": { "secuId": "sh600001", "tradeTime": 0, "start": 0, "count": 0, "sortDirection": 0 },
+    "response": { "code": 0, "msg": "success", "data": { "market": "hk", "symbol": "00001", "start": "0", "list": [
+      { "seq": 1202, "time": 20191224120820000, "price": 74.65, "volume": 1000, "direction": 0, "trdType": 103 }
+    ] } }
+  },
+  "orderbook": {
+    "request": { "secuId": "hk00001" },
+    "response": { "code": 0, "msg": "success", "data": { "market": "hk", "symbol": "00001", "latestTime": 20200109153121000, "list": [
+      { "bidPrice": 9.31, "bidVolume": 12000, "bidOrderCount": 5, "askPrice": 9.32, "askVolume": 21600, "askOrderCount": 3 }
+    ] } }
+  },
+  "errors": {
+    "806111": { "code": 806111, "msg": "非法的证券代码或者市场", "data": null },
+    "806109": { "code": 806109, "msg": "权限错误", "data": null }
+  }
+}
