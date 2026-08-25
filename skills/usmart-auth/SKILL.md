@@ -1,76 +1,95 @@
 ---
 name: usmart-auth
-version: 1.0.0
-description: "盈立 CLI 认证与配置：初始化配置 config-init、测试登录 login、交易解锁 unlock、查看会话状态 status、健康检查 doctor、安装 skill。当用户第一次使用 usmart-cli、需要配置账号、测试登录、排查连接问题时触发。"
+version: 2.0.0
+description: "usmart-cli 的配置与鉴权：初始化配置 config-init、多 profile 管理、测试登录、交易解锁、会话状态、登出、短信验证码登录、健康检查 doctor。当用户第一次使用 usmart-cli、要配置或切换账号、排查登录/连接问题时触发。"
 metadata:
   requires:
     bins: ["usmart"]
-  cliHelp: "usmart --help"
+  cliHelp: "usmart auth --help"
 ---
 
-# usmart-cli 认证与配置
+# usmart auth —— 配置与鉴权
 
-uSMART 使用「账号 + RSA 签名」鉴权，**不是 OAuth**。登录与交易解锁由 CLI 在每次调用时自动完成（参考 Java AOP），token 缓存到本地复用。
+开始前先读 [`../usmart-shared/SKILL.md`](../usmart-shared/SKILL.md)（退出码、错误信封、安全规则）。
 
-## 安装到各 Agent
+uSMART 用「账号 + RSA 签名」鉴权，**不是 OAuth**，没有 access token 换取流程。登录与交易解锁由 CLI 在每次调用时自动完成，token 缓存本地复用。
 
-```bash
-usmart install          # = npx skills add YangKGcsdms/usmart-cli -y -g
-usmart update           # 同步 skill 到最新
-```
-
-## 初始化配置
-
-首次使用必须运行：
+## 首次配置
 
 ```bash
-usmart usmart config-init
+usmart auth config-init          # 生成 ~/.config/usmart-cli/usmart.json（600 权限）
+# 编辑填入真实值，然后：
+usmart doctor                    # 离线检查：字段、权限、占位符
+usmart doctor --online           # 联网检查：真实登录一次
 ```
 
-生成模板 `~/.config/usmart-cli/usmart.json`（权限 600），然后编辑填入：
-
-- `account`：`lang` / `channel` / `areaCode` / `phoneNumber` / `loginPassword` / `tradePassword` / `publicKey` / `privateKey`（RSA，Base64 DER）
-- `env`：`tradeHost` / `quoteHost`
-
-> 自定义路径：所有命令支持 `--config <path>`；也可用环境变量 `USMART_CONFIG_DIR` 覆盖配置目录。
-
-## 登录 / 交易解锁（测试用）
-
-```bash
-usmart usmart login     # 测试登录，成功后缓存 token
-usmart usmart unlock    # 测试交易解锁（trade-login）
-```
-
-业务命令会自动登录/解锁，一般无需手动调用这两个。
-
-## 查看会话状态
-
-```bash
-usmart usmart status
-```
-
-读取本地缓存（`~/.config/usmart-cli/session.json`），不触发网络：
+配置结构：
 
 ```json
-{ "ok": true, "loggedIn": true, "tradeUnlocked": false, "token": "abcd****wxyz" }
+{
+  "account": {
+    "lang": "1", "channel": "渠道号", "areaCode": "86", "phoneNumber": "手机号",
+    "loginPassword": "登录密码", "tradePassword": "6位交易密码",
+    "publicKey": "Base64 X509/SPKI 公钥", "privateKey": "Base64 PKCS8 私钥",
+    "deviceType": "t5"
+  },
+  "env": {
+    "tradeHost": "https://open-jy.yxzq.com",
+    "quoteHost": "https://open-hz.yxzq.com:8443",
+    "pushHost": "wss://open-hz.yxzq.com:8443/wss/v1"
+  }
+}
 ```
 
-## 健康检查
+- `publicKey` 用于加密手机号/密码，`privateKey` 用于请求签名，**两者由盈立分配、不是一对**
+- `pushHost` 不填会从 `quoteHost` 自动推导
+- 测试环境把 host 换成 `open-jy-uat.yxzq.com` / `open-hz-uat.yxzq.com`
+
+## 多账号 / 多环境（profile）
 
 ```bash
-usmart doctor
+usmart auth config-init --profile uat     # → ~/.config/usmart-cli/uat.json
+usmart --profile uat account asset        # 用 uat 账号
+usmart auth profiles                      # 列出所有 profile 及其会话状态
 ```
 
-检查：配置文件是否存在且可解析、`account`/`env` 必填字段是否完整、是否有缓存 token。退出码非 0 表示有问题。
+配置目录可用 `USMART_CONFIG_DIR` 整体覆盖（配置与会话缓存一起走该目录）。
 
-## 会话与过期处理
+## 会话
 
-- token 缓存按「账号+环境」指纹隔离，换账号自动失效。
-- `300101`（token 过期）：只读命令自动重登重试；交易命令重登后要求重新发起，避免重复下单。
-- `409984`（交易锁过期）：自动重新解锁并重试。
+```bash
+usmart auth status        # 读本地缓存，不触发网络
+usmart auth login         # 主动登录一次（一般不需要，业务命令会自动登录）
+usmart auth unlock        # 主动交易解锁（一般不需要）
+usmart auth trade-status  # 问服务端：data.status 0=未解锁 1=已解锁
+usmart auth logout        # 清除本地 token
+```
 
-## 安全规则
+`status` / `login` / `unlock` 输出：
 
-- **禁止把 `usmart.json` 提交 git，禁止终端明文输出密码 / token / RSA 私钥。**
-- 配置文件与会话缓存均为 600 权限。
-- 高风险写操作（下单 / 撤单）必须带 `--yes`，不带会退出码 10；可先 `--dry-run` 预览实际请求而不发送。
+```json
+{"ok":true,"loggedIn":true,"tradeUnlocked":false,"token":"eyJ0****oJtY","profile":"default"}
+```
+
+## 短信验证码登录
+
+账号被风控要求验证码时（`300707`、新设备登录）：
+
+```bash
+usmart auth send-captcha --type 106       # 106=短信登录
+usmart auth login-captcha --captcha 123456
+```
+
+`--type` 取值见 `usmart dict get captcha-type`。
+
+## 排查
+
+| 现象 | 处理 |
+|---|---|
+| 退出码 1 + `config_missing` | 跑 `usmart auth config-init` |
+| 退出码 1 + `config_invalid` | `error.details.missing` 里是缺的字段 |
+| `login_failed` | 检查 `phoneNumber` / `loginPassword` / `areaCode` / `publicKey`；必要时改走验证码登录 |
+| `trade_unlock_failed` + `310104` | 交易密码错，**别重试**，`301002` 会锁定 |
+| RSA 报错 `publicKey/privateKey 格式错误` | 必须是 Base64 编码的 DER（公钥 X509/SPKI、私钥 PKCS8），不是 PEM |
+| `doctor` 报「无模板占位符」失败 | 配置里还留着 `YOUR_xxx` / `BASE64_xxx` |
+| 行情 `HTTP_403` | 网关限流，降频等待；不是配置问题 |

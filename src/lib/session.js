@@ -1,23 +1,23 @@
 import { UsmartClient, isSuccess } from './usmart-client.js';
 import { loadSession, saveSession, clearSession } from './session-cache.js';
+import { CliError, EXIT } from './errors.js';
 
 export const CODE_TOKEN_INVALID = '300101';
 export const CODE_TRADE_LOCKED = '409984';
 
 /**
- * uSMART 会话状态管理器（对应 Java UsmartSessionManager + UsmartAspect）。
+ * uSMART 会话状态管理器。
  * 职责：维护登录/交易解锁状态，按需自动登录/解锁，并像 AOP 一样透明处理过期重试。
  */
 export class UsmartSessionManager {
-  constructor(config) {
+  constructor(config, { profile = 'default', dryRun = false } = {}) {
     this.config = config;
-    this.client = new UsmartClient(config);
+    this.profile = profile;
+    this.client = new UsmartClient(config, { dryRun });
     this.loggedIn = false;
     this.tradeUnlocked = false;
 
-    // 复用磁盘上缓存的 token / 解锁状态（若配置指纹一致）。
-    // token 失效时由 call() 的自动重登重试兜底。
-    const cached = loadSession(config);
+    const cached = loadSession(config, profile);
     if (cached && cached.token) {
       this.client.token = cached.token;
       this.loggedIn = true;
@@ -26,121 +26,107 @@ export class UsmartSessionManager {
   }
 
   persist() {
-    if (this.client.dryRun) return; // dry-run 不落盘任何 token
-    saveSession(this.config, {
-      token: this.client.token,
-      tradeUnlocked: this.tradeUnlocked,
-    });
+    if (this.client.dryRun) return;
+    saveSession(this.config, { token: this.client.token, tradeUnlocked: this.tradeUnlocked }, this.profile);
   }
 
-  /**
-   * 确保已登录，未登录时自动登录。
-   */
   async ensureLogin() {
     if (this.loggedIn) return;
+    if (this.client.dryRun) { this.loggedIn = true; this.client.token = this.client.token || '<dry-run>'; return; }
     const result = await this.client.login();
-    if (isSuccess(result)) {
-      this.loggedIn = true;
-      this.tradeUnlocked = false;
-      this.persist();
-    } else {
-      throw new Error(`[uSMART] 登录失败：${result.msg || result.message || JSON.stringify(result)}`);
+    if (!isSuccess(result)) {
+      throw new CliError('login_failed', `登录失败：${result.msg || JSON.stringify(result)}`, {
+        exitCode: EXIT.API_ERROR, code: result.code, raw: result.raw,
+        hint: '检查 account.phoneNumber / loginPassword / areaCode / publicKey；若账号需短信验证，使用 usmart auth send-captcha + login-captcha',
+      });
     }
+    this.loggedIn = true;
+    this.tradeUnlocked = false;
+    this.persist();
   }
 
-  /**
-   * 确保交易已解锁，未解锁时自动 trade-login。
-   */
+  /** 验证码登录。 */
+  async loginWithCaptcha(captcha) {
+    const result = await this.client.loginCaptcha(captcha);
+    if (!isSuccess(result)) {
+      throw new CliError('login_failed', `验证码登录失败：${result.msg || JSON.stringify(result)}`, { exitCode: EXIT.API_ERROR, code: result.code, raw: result.raw });
+    }
+    this.loggedIn = true;
+    this.tradeUnlocked = false;
+    this.persist();
+    return result;
+  }
+
   async ensureTradeUnlocked() {
     if (this.tradeUnlocked) return;
     await this.ensureLogin();
+    if (this.client.dryRun) { this.tradeUnlocked = true; return; }
     const result = await this.client.tradeLogin();
-    if (isSuccess(result)) {
-      this.tradeUnlocked = true;
-      this.persist();
-    } else {
-      throw new Error(`[uSMART] 交易解锁失败：${result.msg || result.message || JSON.stringify(result)}`);
+    if (!isSuccess(result)) {
+      throw new CliError('trade_unlock_failed', `交易解锁失败：${result.msg || JSON.stringify(result)}`, {
+        exitCode: EXIT.API_ERROR, code: result.code, raw: result.raw,
+        hint: '检查 account.tradePassword（6 位纯数字）；连续错误会锁定交易密码',
+      });
     }
+    this.tradeUnlocked = true;
+    this.persist();
   }
 
-  /**
-   * 标记 token 失效。
-   */
   invalidateToken() {
     this.loggedIn = false;
     this.tradeUnlocked = false;
     this.client.token = '';
-    clearSession();
+    clearSession(this.profile);
   }
 
-  /**
-   * 标记交易解锁失效。
-   */
   invalidateTradeUnlock() {
     this.tradeUnlocked = false;
     if (this.client.token) this.persist();
   }
 
-  getClient() {
-    return this.client;
+  logout() {
+    this.invalidateToken();
   }
 
-  isLoggedIn() {
-    return this.loggedIn;
-  }
-
-  isTradeUnlocked() {
-    return this.tradeUnlocked;
-  }
+  getClient() { return this.client; }
+  isLoggedIn() { return this.loggedIn; }
+  isTradeUnlocked() { return this.tradeUnlocked; }
 
   /**
-   * AOP 式调用：自动完成登录/交易解锁/过期重试。
-   *
+   * AOP 式调用：自动完成登录 / 交易解锁 / 过期重试。
    * @param {Function} apiFn - 实际业务调用，参数为 UsmartClient
-   * @param {Object} options
-   * @param {boolean} [options.requireTrade=false] - 是否需要交易解锁
+   * @param {{requireTrade?: boolean, auth?: boolean}} options
    */
   async call(apiFn, options = {}) {
-    const { requireTrade = false } = options;
+    const { requireTrade = false, auth = true } = options;
+    if (!auth) return apiFn(this.client);
 
-    // 1. 确保已登录
     await this.ensureLogin();
+    if (requireTrade) await this.ensureTradeUnlocked();
 
-    // 2. 交易方法确保已解锁
-    if (requireTrade) {
-      await this.ensureTradeUnlocked();
-    }
-
-    // 3. 执行目标方法
     let result = await apiFn(this.client);
 
-    // 4. 检测交易解锁过期（409984）—— 订单未提交，重新解锁后安全重试
+    // 交易解锁过期（409984）—— 订单未提交，重新解锁后安全重试
     if (isTradeLocked(result)) {
       this.invalidateTradeUnlock();
       await this.ensureTradeUnlocked();
       result = await apiFn(this.client);
     }
 
-    // 5. 检测 token 过期并分策略处理
+    // token 过期（300101）
     if (isTokenExpired(result)) {
       this.invalidateToken();
       await this.ensureLogin();
       if (requireTrade) {
         await this.ensureTradeUnlocked();
-      }
-
-      if (!requireTrade) {
-        // 只读操作：幂等，直接重试
-        result = await apiFn(this.client);
-      } else {
         // 交易操作：已完成重登，由调用方重发，避免重复下单/撤单
-        const err = new Error('[uSMART] 交易 session 已过期，已完成重新登录，请重新发起请求');
-        err.code = CODE_TOKEN_INVALID;
-        err.retryable = true;
-        throw err;
+        throw new CliError('session_expired', '交易 session 已过期，已完成重新登录，请重新发起请求', {
+          exitCode: EXIT.API_ERROR, code: CODE_TOKEN_INVALID, retryable: true,
+          hint: '原样重新执行同一条命令即可',
+        });
       }
+      result = await apiFn(this.client);
     }
-
     return result;
   }
 }

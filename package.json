@@ -1,7 +1,7 @@
 {
   "name": "usmart-cli",
-  "version": "1.1.0",
-  "description": "uSMART 盈立证券命令行工具 - 让智能体与人类通过 CLI 操作 uSMART 交易与行情",
+  "version": "2.0.0",
+  "description": "uSMART 盈立证券命令行工具 —— 覆盖官方 Open API 全部交易/行情/IPO/期权/MA 接口与 WebSocket 推送，面向 AI Agent 与人类",
   "main": "src/cli.js",
   "type": "module",
   "bin": {
@@ -11,6 +11,7 @@
     "bin",
     "src",
     "skills",
+    "docs",
     "scripts/postinstall.js",
     "usmart.config.example.json",
     "README.md",
@@ -18,9 +19,12 @@
     "LICENSE"
   ],
   "scripts": {
-    "postinstall": "node scripts/postinstall.js",
     "dev": "node src/cli.js",
-    "test": "node --test"
+    "test": "node --test test/*.test.js",
+    "test:unit": "node --test test/*.test.js",
+    "test:integration": "USMART_INTEGRATION=1 node --test test/integration/*.test.js",
+    "test:all": "npm run test:unit && npm run test:integration",
+    "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [
     "usmart",
@@ -28,7 +32,12 @@
     "cli",
     "trading",
     "stock",
+    "quote",
+    "ipo",
+    "option",
+    "websocket",
     "ai-agent",
+    "claude-code",
     "lark-cli-like"
   ],
   "author": "carter",

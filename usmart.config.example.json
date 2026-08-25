@@ -1,18 +1,20 @@
 {
-  "_comment": "uSMART 账户与环境配置。复制为 usmart.config.json 后填入真实值，切勿提交到 git。",
+  "_comment": "复制到 ~/.config/usmart-cli/usmart.json（或 <profile>.json）并填入真实值；文件权限须为 600，不要提交到 git。deviceType / pushHost 可选。",
   "account": {
     "lang": "1",
-    "channel": "YOUR_CHANNEL_ID",
+    "channel": "YOUR_CHANNEL",
     "areaCode": "86",
-    "phoneNumber": "YOUR_PHONE_NUMBER",
+    "phoneNumber": "YOUR_PHONE",
     "loginPassword": "YOUR_LOGIN_PASSWORD",
-    "tradePassword": "YOUR_6_DIGIT_TRADE_PASSWORD",
+    "tradePassword": "YOUR_TRADE_PASSWORD",
     "publicKey": "BASE64_X509_PUBLIC_KEY",
-    "privateKey": "BASE64_PKCS8_PRIVATE_KEY"
+    "privateKey": "BASE64_PKCS8_PRIVATE_KEY",
+    "deviceType": "t5"
   },
   "env": {
-    "tradeHost": "https://uat-trade.example.com",
-    "quoteHost": "https://uat-quote.example.com",
+    "tradeHost": "https://open-jy.yxzq.com",
+    "quoteHost": "https://open-hz.yxzq.com:8443",
+    "pushHost": "wss://open-hz.yxzq.com:8443/wss/v1",
     "type": 0
   }
 }

@@ -14,10 +14,11 @@ jobs:
         node-version: [18.x, 20.x, 22.x]
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm install
+      # 只跑单元测试：全部 mock，不联网、不需要真实账号。
+      # 集成测试（npm run test:integration）需要真实配置，只在本地手动跑。
       - run: npm test
-      - run: npm run lint --if-present
+      - run: npm pack --dry-run
