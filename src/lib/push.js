@@ -59,9 +59,10 @@ function decodeData(data) {
  * @param {(ev: object) => void} [p.onEvent]    控制事件（auth/sub/pong 等）
  * @param {number} [p.durationMs]   运行时长，0 = 直到 SIGINT
  * @param {number} [p.maxMessages]  收到 N 条后退出，0 = 不限
+ * @param {() => boolean} [p.stopWhen]  每条消息后回调，返回 true 则提前结束（用于「每个 topic 各收一条」）
  * @returns {Promise<{received:number, closedBy:string}>}
  */
-export async function subscribe({ url, token, topics, onMessage, onEvent = () => {}, durationMs = 0, maxMessages = 0, connectTimeoutMs = 10_000 }) {
+export async function subscribe({ url, token, topics, onMessage, onEvent = () => {}, durationMs = 0, maxMessages = 0, connectTimeoutMs = 10_000, stopWhen = null }) {
   validateTopics(topics);
   const WS = await getWebSocket();
   let reqId = Date.now();
@@ -125,7 +126,8 @@ export async function subscribe({ url, token, topics, onMessage, onEvent = () =>
         case 'update':
           received += 1;
           onMessage({ topic: msg.topic, data: decodeData(msg.data), receivedAt: new Date().toISOString() });
-          if (maxMessages > 0 && received >= maxMessages) finish('max_messages');
+          if (maxMessages > 0 && received >= maxMessages) return finish('max_messages');
+          if (stopWhen && stopWhen()) return finish('stop_when');
           return;
         case 'unsub':
           return;

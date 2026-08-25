@@ -1,9 +1,34 @@
 import { defineDomain } from '../lib/registry.js';
 import { opt, compact } from '../lib/validate.js';
 import { subscribe } from '../lib/push.js';
+import { snapshotViaPush, isQuoteForbidden } from '../lib/quote-fallback.js';
 
 const MARKET = opt('--market <m>', '市场：hk|us|sh|sz', { default: 'hk', choices: ['hk', 'us', 'sh', 'sz'] });
 const SECU = opt('--secu-id <id>', '证券唯一标识 = 市场+代码，如 usAAPL / hk00700', { required: true });
+
+const FALLBACK_OPTS = [
+  opt('--no-ws-fallback', 'REST 被 403 拒绝时不降级到 WebSocket，直接报错', { type: 'boolean' }),
+  opt('--ws-timeout <t>', '降级取快照的等待时长，默认 12s', { default: '12s' }),
+];
+
+/**
+ * 先走 REST；网关返回 403（该渠道无 REST 行情权限）时降级到 WebSocket 推送取快照。
+ * 只对「取当前快照」语义的接口这么做——K 线、分时、逐笔这类历史数据推送里没有，无法降级。
+ */
+async function withFallback(session, ctx, o, topicType, secuIds, restFn) {
+  const resp = await session.call(restFn);
+  if (!isQuoteForbidden(resp) || o.noWsFallback || ctx.dryRun) return resp;
+
+  process.stderr.write('[usmart] 行情 REST 返回 403，降级到 WebSocket 推送取快照…\n');
+  await session.ensureLogin();
+  return snapshotViaPush({
+    type: topicType,
+    secuIds,
+    url: ctx.config.env.pushHost,
+    token: session.getClient().token,
+    timeoutMs: parseDuration(o.wsTimeout) || 12_000,
+  });
+}
 
 function parseDuration(v) {
   if (v === undefined || v === null || v === '') return 0;
@@ -18,9 +43,13 @@ export function registerQuote(program) {
 
   quote.add({
     name: 'realtime', legacy: 'realtime',
-    description: '实时行情（可多只，逗号分隔）',
-    options: [opt('--secu-ids <ids>', '证券 ID 列表，如 usAAPL,hk00700', { type: 'list', required: true })],
-    action: (s, o, ctx) => s.call((c) => c.postQuote('/quotes-openservice/api/v1/realtime', ctx.merge({ secuIds: o.secuIds }))),
+    description: '实时行情（可多只，逗号分隔）。REST 被网关 403 拒绝时自动降级到 WebSocket 推送取快照',
+    options: [
+      opt('--secu-ids <ids>', '证券 ID 列表，如 usAAPL,hk00700', { type: 'list', required: true }),
+      ...FALLBACK_OPTS,
+    ],
+    action: (s, o, ctx) => withFallback(s, ctx, o, 'rt', o.secuIds,
+      (c) => c.postQuote('/quotes-openservice/api/v1/realtime', ctx.merge({ secuIds: o.secuIds }))),
   });
 
   quote.add({
@@ -77,9 +106,10 @@ export function registerQuote(program) {
 
   quote.add({
     name: 'order-book', legacy: 'order-book',
-    description: '买卖盘（档位）',
-    options: [SECU],
-    action: (s, o, ctx) => s.call((c) => c.postQuote('/quotes-openservice/api/v1/orderbook', ctx.merge({ secuId: o.secuId }))),
+    description: '买卖盘（档位）。REST 被网关 403 拒绝时自动降级到 WebSocket 推送取快照',
+    options: [SECU, ...FALLBACK_OPTS],
+    action: (s, o, ctx) => withFallback(s, ctx, o, 'ob', [o.secuId],
+      (c) => c.postQuote('/quotes-openservice/api/v1/orderbook', ctx.merge({ secuId: o.secuId }))),
   });
 
   quote.add({
