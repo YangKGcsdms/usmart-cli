@@ -49,7 +49,8 @@ export function validateOptions(opts, specs, { relaxRequired = false, onRelaxed 
     out[name] = v;
   }
   if (relaxRequired && missing.length) {
-    if (onRelaxed) onRelaxed(missing);
+    // 传副本：下面会清空 missing，回调方不应看到被就地改掉的数组
+    if (onRelaxed) onRelaxed([...missing]);
     missing.length = 0;
   }
   if (missing.length || invalid.length) {
