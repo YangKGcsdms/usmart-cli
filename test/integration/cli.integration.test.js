@@ -49,9 +49,26 @@ describe('integration: usmart-cli 只读命令', { skip: !ENABLED && 'set USMART
   let firstIpoId = null;
   let firstApplyId = null;
 
+  // 前置体检：配置/登录不通时，一次说清楚原因就退出，
+  // 而不是让上百条用例各自超时失败、把真正的根因埋掉。
   before(() => {
-    const r = run(['doctor']);
-    assert.equal(r.code, 0, `doctor 未通过：${r.stdout}`);
+    const doc = run(['doctor']);
+    assert.equal(doc.code, 0, `配置未通过体检，先修配置再跑集成测试：\n${doc.stdout}`);
+
+    const login = run(['auth', 'login']);
+    if (login.code !== 0) {
+      const err = login.json?.error || {};
+      const pub = doc.json?.checks?.find((c) => c.item.includes('验签公钥'))?.detail;
+      assert.fail(
+        `账号无法登录，集成测试无法进行。\n` +
+        `  错误码: ${err.code}\n` +
+        `  信息  : ${err.message}\n` +
+        `  建议  : ${err.hint || '检查配置'}\n` +
+        (err.code === '107012' && pub
+          ? `  当前私钥对应的验签公钥（需与 uSMART 登记的一致）：\n    ${pub}\n`
+          : '')
+      );
+    }
   });
 
   describe('doctor / auth', () => {
