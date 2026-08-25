@@ -16,8 +16,20 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const BIN = path.join(ROOT, 'bin', 'usmart');
 const ENABLED = !!process.env.USMART_INTEGRATION;
 
-function run(args, { env = {}, timeout = 60_000 } = {}) {
+/**
+ * 跑一条 CLI 命令。
+ * 进程被超时杀掉时 spawnSync 返回 status=null，直接断言会得到毫无信息量的
+ * 「null !== 2」；这里重试一次，仍失败则抛出说明了原因的错误。
+ */
+function run(args, { env = {}, timeout = 60_000, _retried = false } = {}) {
   const r = spawnSync('node', [BIN, ...args], { encoding: 'utf-8', timeout, env: { ...process.env, ...env } });
+  if (r.status === null) {
+    if (!_retried) return run(args, { env, timeout, _retried: true });
+    throw new Error(
+      `命令未能在 ${timeout / 1000}s 内结束（重试一次后仍然如此）：usmart ${args.join(' ')}\n` +
+      `  可能是网络停顿或对端无响应。stderr: ${(r.stderr || '').slice(0, 200)}`
+    );
+  }
   let json = null;
   try { json = JSON.parse(r.stdout); } catch { /* not json */ }
   return { code: r.status, stdout: r.stdout, stderr: r.stderr, json };
