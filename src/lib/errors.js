@@ -107,8 +107,10 @@ export function toCliError(err) {
   if (err && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
     return new CliError('timeout', '请求超时', { exitCode: EXIT.ERROR, hint: '检查网络或调大 USMART_TIMEOUT_MS', retryable: true });
   }
-  if (err && (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET' || err.cause?.code)) {
-    const c = err.code || err.cause?.code;
+  const NET_CODES = new Set(['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EHOSTUNREACH', 'ENETUNREACH', 'EPIPE', 'EAI_AGAIN', 'UND_ERR_SOCKET', 'UND_ERR_CONNECT_TIMEOUT', 'CERT_HAS_EXPIRED']);
+  const netCode = NET_CODES.has(err?.code) ? err.code : (NET_CODES.has(err?.cause?.code) ? err.cause.code : null);
+  if (netCode) {
+    const c = netCode;
     return new CliError('network_error', `网络错误：${c}`, { exitCode: EXIT.ERROR, hint: '检查 env.tradeHost / env.quoteHost 与网络连通性', retryable: true });
   }
   return new CliError('internal_error', err?.message || String(err), { exitCode: EXIT.ERROR, details: process.env.USMART_DEBUG ? err?.stack : undefined });

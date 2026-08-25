@@ -65,7 +65,8 @@ export function makeHandler(def, { legacyName } = {}) {
             risk: { level: 'high-risk-write', action: fullName },
           },
         });
-        process.exit(EXIT.CONFIRM_REQUIRED);
+        process.exitCode = EXIT.CONFIRM_REQUIRED;
+        return;
       }
 
       // 2. 参数校验
@@ -100,7 +101,8 @@ export function makeHandler(def, { legacyName } = {}) {
     } catch (err) {
       const cli = toCliError(err);
       printJson(cli.toJSON());
-      process.exit(cli.exitCode);
+      // 用 exitCode 而不是 process.exit()：后者会在管道场景下截断尚未 flush 的 stdout
+      process.exitCode = cli.exitCode;
     }
   };
 }
@@ -150,7 +152,8 @@ export function guard(fn) {
     } catch (err) {
       const cli = toCliError(err);
       printJson(cli.toJSON());
-      process.exit(cli.exitCode);
+      // 用 exitCode 而不是 process.exit()：后者会在管道场景下截断尚未 flush 的 stdout
+      process.exitCode = cli.exitCode;
     }
   };
 }

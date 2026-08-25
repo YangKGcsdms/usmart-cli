@@ -69,6 +69,6 @@ export function registerDoctor(program) {
       const profiles = listProfiles().map((p) => p.name);
       const ok = checks.every((c) => c.ok || c.level === 'warn');
       emit({ ok, profile, profiles, checks }, { format: g.format, jq: g.jq });
-      process.exit(ok ? 0 : 1);
+      process.exitCode = ok ? 0 : 1;
     }));
 }

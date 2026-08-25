@@ -57,6 +57,6 @@ export async function run(argv) {
   } catch (err) {
     const cli = toCliError(err);
     printJson(cli.toJSON());
-    process.exit(cli.exitCode);
+    process.exitCode = cli.exitCode;
   }
 }
