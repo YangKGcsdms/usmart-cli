@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.0.1
+
+### 修复
+
+- **`quote tick` 翻页可能静默停在第一页**：官方文档的参数表写 `seq`、同一页的请求示例却写 `start`
+  （返回体里也叫 `start`）。首页传 0 时两者行为无法区分，若服务端实际读 `start` 而我们只发 `seq`，
+  翻页就会一直返回同一页。现在两个字段一起发、取值相同。
+- **REST 与 WebSocket 对 int64 的处理不一致**：`latestTime` 这类超过 2^53 的整数，
+  REST 侧走 `parseJsonSafe` 保留为字符串，WS 侧走原生 `JSON.parse` 是数字，
+  同一字段两条链路类型不同。现在 WS 也走 `parseJsonSafe`。
+- 补充错误码 `107012`（非法 OPEN 请求：渠道凭据与环境不匹配）、`409985`（参数不合法）。
+
+### 新增
+
+- `test/quote-contract.test.js`：用官方《基础行情开放API》文档里逐字抄下的请求/响应示例做契约测试，
+  断言 7 个行情命令构造的请求体字段与官方示例一致、官方响应形状能被正确解析。
+  行情网关不可用时这层仍可离线跑。
+
+### 文档订正
+
+- 修正对行情 REST `HTTP 403` 的判断：经双机（不同公网 IP）、双 token、双客户端版本验证，
+  该 403 **与来源 IP、token、客户端版本均无关，按渠道号判定**，不是突发限流封 IP。
+  并记录网关的分层语义：**400 = 缺鉴权头，401 = token 无效，403 = token 有效但无 REST 行情权限**；
+  同一 token 的 WebSocket 推送不受影响，可作为降级方案。
+
 ## 2.0.0
 
 对照官方文档（https://api-doc.usmart8.com/zh-cn/）逐条核对后的大版本重构：补齐全部接口，修复多处会导致错误结果的缺陷，重写全部 skill。
@@ -57,8 +82,7 @@
 - `--format table|csv|pretty`（表格按中文宽度对齐）、`--jq`（有 jq 用完整语法，否则内置路径选择器；多值输出 NDJSON）
 - `--profile` 多账号/多环境，`auth profiles` 列出全部
 - 客户端限流：行情高频 120/min、`basicinfo` 20/min，超限自动等待；
-  并强制相邻行情请求的最小间隔（默认 400ms，`USMART_QUOTE_MIN_INTERVAL_MS` 可调）——
-  实测行情网关对突发敏感，短时间连打十几次会被 openresty 直接 403 封禁一段时间
+  并强制相邻行情请求的最小间隔（默认 400ms，`USMART_QUOTE_MIN_INTERVAL_MS` 可调）
 - HTTP 超时（`USMART_TIMEOUT_MS`，默认 20s）与行情请求的网络错误重试
 - `doctor` 增强：Node 版本、目录与文件权限、模板占位符检测、`--online` 真实登录探测
 - 官方错误码表内置到 CLI，错误信封自动带 `hint`

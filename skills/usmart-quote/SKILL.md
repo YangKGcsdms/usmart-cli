@@ -82,10 +82,23 @@ CLI 除了分钟配额，还强制相邻两次行情请求的**最小间隔**（
 对策：批量查行情用 `realtime --secu-ids a,b,c` 一次拿多只；持续跟踪用 `subscribe`；
 不要写 `while true; do usmart quote realtime ...; done`。
 
-判断是不是被封：不带鉴权头直接 `curl` 同一个 path 会返回 **400**（说明路径没问题），
-而带鉴权的请求返回 **403**（`server: openresty`、`text/html`、**没有 `Retry-After`**），
-就是被网关封了，只能等待恢复。**官方文档没有描述这个行为**，也没给对应的错误码——
-文档只列了上面的每分钟配额。被封期间 WebSocket 推送（`quote subscribe`）仍然可用，可作为降级方案。
+### 行情 REST 返回 HTTP 403 时怎么判断
+
+网关是分层判定的，**先看状态码**：
+
+| 状态码 | 含义 |
+|---|---|
+| **400** | 没带 `Authorization` / `X-Sign`（路径本身没问题） |
+| **401** | token 无效或已过期 → `usmart auth logout && usmart auth login` |
+| **403** | **token 有效，但该渠道没有 REST 行情权限** |
+
+403 的响应是 `server: openresty` 的 HTML，**没有业务错误码、没有 `Retry-After`**，官方文档对此没有任何描述。
+
+实测确认 403 **与下列因素无关**（换了都复现）：来源 IP、token 新旧、客户端版本。
+它按**渠道号**判定。同一 token 的 **WebSocket 推送仍然正常**——说明行情数据权限还在，
+只有 REST 这一层被拒。所以遇到持续 403，不要干等，直接找官方确认该渠道的 REST 行情权限。
+
+**降级方案**：用 `usmart quote subscribe` 拿实时行情、逐笔和买卖盘，不受该限制影响。
 
 ## 历史 K 线的标的额度
 

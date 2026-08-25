@@ -155,7 +155,7 @@ export const DICTS = {
       'realtime/timeline/kline/tick/marketstate/orderbook': 120,
       basicinfo: 20,
       'push 订阅': '最多 10 个 topic，每秒最多订阅/取消 10 个',
-      '（文档未列）行情网关突发': 'REST 侧短时间连打会被 openresty 直接返回 HTTP 403 并封一段时间，无 Retry-After；WebSocket 推送不受影响',
+      '（文档未列）行情 REST 403': '网关层 HTTP 403（openresty，无业务码、无 Retry-After）。已验证与来源 IP、token、客户端版本无关，按渠道号判定；同一 token 的 WebSocket 推送不受影响。401=token 无效，403=token 有效但无权限',
     },
   },
   'kline-quota': {

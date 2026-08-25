@@ -19,7 +19,7 @@ describe('errors', () => {
     assert.equal(e.type, 'network_error'); assert.equal(e.retryable, true);
   });
   it('错误码表覆盖官方文档主要码', () => {
-    for (const c of ['300101', '409984', '806111', '800004', '107004', '305016']) assert.ok(describeCode(c), c);
+    for (const c of ['300101', '409984', '806111', '800004', '107004', '107012', '305016', '409933', '409985']) assert.ok(describeCode(c), c);
     assert.equal(describeCode('999999'), null);
   });
 });
