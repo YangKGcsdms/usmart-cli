@@ -7,6 +7,7 @@ const MARKET = opt('--market <m>', '市场：hk|us|sh|sz', { default: 'hk', choi
 const SECU = opt('--secu-id <id>', '证券唯一标识 = 市场+代码，如 usAAPL / hk00700', { required: true });
 
 const FALLBACK_OPTS = [
+  // commander 对 --no-<name> 的处理：属性名是 wsFallback，缺省 true，带上该 flag 时为 false
   opt('--no-ws-fallback', 'REST 被 403 拒绝时不降级到 WebSocket，直接报错', { type: 'boolean' }),
   opt('--ws-timeout <t>', '降级取快照的等待时长，默认 12s', { default: '12s' }),
 ];
@@ -17,7 +18,7 @@ const FALLBACK_OPTS = [
  */
 async function withFallback(session, ctx, o, topicType, secuIds, restFn) {
   const resp = await session.call(restFn);
-  if (!isQuoteForbidden(resp) || o.noWsFallback || ctx.dryRun) return resp;
+  if (!isQuoteForbidden(resp) || o.wsFallback === false || ctx.dryRun) return resp;
 
   process.stderr.write('[usmart] 行情 REST 返回 403，降级到 WebSocket 推送取快照…\n');
   await session.ensureLogin();

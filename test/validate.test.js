@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { opt, validateOptions, parseData, compact } from '../src/lib/validate.js';
+import { opt, validateOptions, parseData, compact, attrName } from '../src/lib/validate.js';
 import { CliError, EXIT } from '../src/lib/errors.js';
 
 const specs = [
@@ -41,5 +41,13 @@ describe('validate', () => {
   });
   it('compact 去掉空值', () => {
     assert.deepEqual(compact({ a: 1, b: '', c: null, d: undefined, e: 0, f: false }), { a: 1, e: 0, f: false });
+  });
+});
+
+describe('commander 的 --no-xxx 语义（踩过坑，锁住）', () => {
+  it('--no-ws-fallback 解析出的属性名是 wsFallback 而非 noWsFallback', () => {
+    assert.equal(attrName('--no-ws-fallback'), 'wsFallback');
+    assert.equal(attrName('--ws-timeout <t>'), 'wsTimeout');
+    assert.equal(attrName('--secu-ids <ids>'), 'secuIds');
   });
 });
