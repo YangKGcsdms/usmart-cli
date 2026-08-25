@@ -151,7 +151,27 @@ export const DICTS = {
   },
   'rate-limit': {
     title: '官方限流（次/分钟）',
-    values: { 'realtime/timeline/kline/tick/marketstate/orderbook': 120, basicinfo: 20, 'push 订阅': '最多 10 个 topic，每秒最多订阅/取消 10 个' },
+    values: {
+      'realtime/timeline/kline/tick/marketstate/orderbook': 120,
+      basicinfo: 20,
+      'push 订阅': '最多 10 个 topic，每秒最多订阅/取消 10 个',
+      '（文档未列）行情网关突发': 'REST 侧短时间连打会被 openresty 直接返回 HTTP 403 并封一段时间，无 Retry-After；WebSocket 推送不受影响',
+    },
+  },
+  'kline-quota': {
+    title: '历史 K 线标的额度（官方「功能介绍」§6）',
+    values: {
+      '普通账户': '最近 30 天内 200 个标的',
+      'PRO/智慧账户': '最近 30 天内 500 个标的',
+      计数规则: '每请求 1 只股票的历史 K 线占用 1 个额度；30 天内重复请求同一只不重复累计',
+    },
+  },
+  'account-tier': {
+    title: '账户类型权限（官方「OPEN API 介绍」）',
+    values: {
+      普通账户: '美股/港股/A股交易，部分股票支持融资融券，支持期权；仅交易时段可下单',
+      PRO账户: '美股/港股/A股交易，任意时段下单，享打新与顾投特权',
+    },
   },
 };
 
