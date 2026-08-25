@@ -3,6 +3,7 @@ import { guard, globalsOf, emit, resolveProfile, UsmartSessionManager } from '..
 import { configDir, configPathFor, validateConfig, listProfiles } from '../lib/usmart-config.js';
 import { loadSession, getSessionFilePath } from '../lib/session-cache.js';
 import { isSuccess } from '../lib/usmart-client.js';
+import { deriveSigningPublicKey } from '../lib/rsa.js';
 
 function modeOf(file) {
   try { return (fs.statSync(file).mode & 0o777).toString(8); } catch { return null; }
@@ -51,6 +52,29 @@ export function registerDoctor(program) {
         const looksPlaceholder = /YOUR_|BASE64_|https:\/\/\.\.\./.test(JSON.stringify(config));
         push('无模板占位符', !looksPlaceholder, looksPlaceholder ? '配置里仍有 YOUR_xxx / BASE64_xxx 占位符，请填入真实值' : '已填入真实值');
 
+        // RSA 密钥体检：截断是最常见的粘贴错误；验签公钥用于和 uSMART 登记的那份比对。
+        let signingPub = null;
+        try {
+          signingPub = deriveSigningPublicKey(config.account.privateKey);
+          push('签名私钥可解析', true, `${config.account.privateKey.length} 字符`);
+        } catch (err) {
+          push('签名私钥可解析', false, err.message);
+        }
+        try {
+          const encBytes = Buffer.from(config.account.publicKey, 'base64').length;
+          push('加密公钥可解析', encBytes > 100, `${encBytes} 字节（uSMART 提供，用于加密手机号/密码；与签名私钥不是一对）`);
+        } catch {
+          push('加密公钥可解析', false, 'publicKey 无法 Base64 解码');
+        }
+        if (signingPub) {
+          checks.push({
+            item: '当前私钥对应的验签公钥',
+            ok: true,
+            detail: signingPub,
+            note: '这是应提交给 uSMART 登记的公钥。若登录报 107012（非法 OPEN 请求），把它与 uSMART 那边登记的比对。',
+          });
+        }
+
         const session = loadSession(config, profile);
         push('会话缓存', true, session && session.token ? `已登录（${getSessionFilePath(profile)}），tradeUnlocked=${session.tradeUnlocked}，updatedAt=${session.updatedAt}` : '无缓存 token（首次调用会自动登录）');
 
@@ -62,6 +86,19 @@ export function registerDoctor(program) {
             push('联网登录', true, `登录成功；服务端交易解锁状态=${isSuccess(st) ? st.data?.status : '未知'}`);
           } catch (err) {
             push('联网登录', false, `${err.message}${err.hint ? '；' + err.hint : ''}`);
+          }
+          // 行情 REST 与交易 REST 是分开授权的，单独探一次，避免误判为整体故障
+          try {
+            const mgr = new UsmartSessionManager(config, { profile });
+            const q = await mgr.call((c) => c.postQuote('/quotes-openservice/api/v1/marketstate', { market: 'hk' }));
+            push('行情 REST 可用', isSuccess(q), isSuccess(q) ? '正常' : `${q.msg}（code=${q.code}）`, 'warn');
+          } catch (err) {
+            const is403 = String(err.code) === 'HTTP_403';
+            push('行情 REST 可用', false,
+              is403
+                ? '网关返回 HTTP 403：token 有效但该渠道无 REST 行情权限，需联系 uSMART 开通（WebSocket 推送不受影响，可用 usmart quote subscribe 降级）'
+                : `${err.message}`,
+              'warn');
           }
         }
       }

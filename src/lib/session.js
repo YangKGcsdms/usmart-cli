@@ -1,6 +1,6 @@
 import { UsmartClient, isSuccess } from './usmart-client.js';
 import { loadSession, saveSession, clearSession } from './session-cache.js';
-import { CliError, EXIT } from './errors.js';
+import { CliError, EXIT, describeCode } from './errors.js';
 
 export const CODE_TOKEN_INVALID = '300101';
 export const CODE_TRADE_LOCKED = '409984';
@@ -35,9 +35,11 @@ export class UsmartSessionManager {
     if (this.client.dryRun) { this.loggedIn = true; this.client.token = this.client.token || '<dry-run>'; return; }
     const result = await this.client.login();
     if (!isSuccess(result)) {
-      throw new CliError('login_failed', `登录失败：${result.msg || JSON.stringify(result)}`, {
+      // 错误码表里的 hint 更具体（如 107012 的签名不匹配），优先用它
+      const known = describeCode(result.code);
+      throw new CliError('login_failed', `登录失败：${result.msg || known?.msg || JSON.stringify(result)}`, {
         exitCode: EXIT.API_ERROR, code: result.code, raw: result.raw,
-        hint: '检查 account.phoneNumber / loginPassword / areaCode / publicKey；若账号需短信验证，使用 usmart auth send-captcha + login-captcha',
+        hint: known?.hint || '检查 account.phoneNumber / loginPassword / areaCode / publicKey；若账号需短信验证，使用 usmart auth send-captcha + login-captcha',
       });
     }
     this.loggedIn = true;
@@ -63,9 +65,10 @@ export class UsmartSessionManager {
     if (this.client.dryRun) { this.tradeUnlocked = true; return; }
     const result = await this.client.tradeLogin();
     if (!isSuccess(result)) {
-      throw new CliError('trade_unlock_failed', `交易解锁失败：${result.msg || JSON.stringify(result)}`, {
+      const known = describeCode(result.code);
+      throw new CliError('trade_unlock_failed', `交易解锁失败：${result.msg || known?.msg || JSON.stringify(result)}`, {
         exitCode: EXIT.API_ERROR, code: result.code, raw: result.raw,
-        hint: '检查 account.tradePassword（6 位纯数字）；连续错误会锁定交易密码',
+        hint: known?.hint || '检查 account.tradePassword（6 位纯数字）；连续错误会锁定交易密码',
       });
     }
     this.tradeUnlocked = true;

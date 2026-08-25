@@ -117,3 +117,37 @@ describe('UsmartSessionManager', () => {
     assert.equal(result.data.ok, true);
   });
 });
+
+describe('登录/解锁失败时使用错误码表里的具体 hint', () => {
+  let originalFetch;
+  beforeEach(() => {
+    // 清掉上一组用例写下的会话缓存，否则构造 SessionManager 时会直接复用 token、不触发登录
+    fs.rmSync(path.join(TMP_DIR, 'session.json'), { force: true });
+    originalFetch = globalThis.fetch;
+  });
+  afterEach(() => { globalThis.fetch = originalFetch; });
+
+  it('107012 给出「验签公钥不匹配」而不是通用提示', async () => {
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ code: '107012', msg: '非法OPEN请求' }) });
+    const session = new UsmartSessionManager(generateConfig());
+    await assert.rejects(() => session.ensureLogin(), (e) => {
+      assert.equal(e.code, '107012');
+      assert.match(e.hint, /验签公钥|usmart doctor/);
+      return true;
+    });
+  });
+
+  it('310104 交易密码错误时提示不要重试', async () => {
+    let n = 0;
+    globalThis.fetch = async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify(n++ === 0 ? { code: '0', data: { token: 't' } } : { code: '310104', msg: '交易密码错误' }),
+    });
+    const session = new UsmartSessionManager(generateConfig());
+    await assert.rejects(() => session.ensureTradeUnlocked(), (e) => {
+      assert.equal(e.code, '310104');
+      assert.match(e.hint, /锁定/);
+      return true;
+    });
+  });
+});

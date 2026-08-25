@@ -41,7 +41,9 @@ usmart doctor --online           # 联网检查：真实登录一次
 }
 ```
 
-- `publicKey` 用于加密手机号/密码，`privateKey` 用于请求签名，**两者由盈立分配、不是一对**
+- `publicKey` 是 uSMART 给的**数据加密**公钥（加密手机号/密码）；`privateKey` 是**你自己的签名私钥**，
+  uSMART 持有与之配对的**验签公钥**。**两者不是一对**——换签名私钥时必须让 uSMART 同步更新验签公钥，
+  否则所有请求都会被判 `107012 非法OPEN请求`。跑 `usmart doctor` 可以看到当前私钥对应的验签公钥
 - `pushHost` 不填会从 `quoteHost` 自动推导
 - 测试环境把 host 换成 `open-jy-uat.yxzq.com` / `open-hz-uat.yxzq.com`
 
@@ -88,8 +90,9 @@ usmart auth login-captcha --captcha 123456
 |---|---|
 | 退出码 1 + `config_missing` | 跑 `usmart auth config-init` |
 | 退出码 1 + `config_invalid` | `error.details.missing` 里是缺的字段 |
-| `login_failed` | 检查 `phoneNumber` / `loginPassword` / `areaCode` / `publicKey`；必要时改走验证码登录 |
+| `login_failed` + `107012` | 签名验不过：uSMART 登记的验签公钥与当前 `privateKey` 不匹配。`usmart doctor` 看当前私钥对应的验签公钥并与官方登记的比对 |
+| `login_failed` 其他码 | 检查 `phoneNumber` / `loginPassword` / `areaCode`；必要时改走验证码登录 |
 | `trade_unlock_failed` + `310104` | 交易密码错，**别重试**，`301002` 会锁定 |
 | RSA 报错 `publicKey/privateKey 格式错误` | 必须是 Base64 编码的 DER（公钥 X509/SPKI、私钥 PKCS8），不是 PEM。若提示「看起来是被截断了」，说明复制时丢了尾巴，按提示里给出的字符数重新完整复制 |
 | `doctor` 报「无模板占位符」失败 | 配置里还留着 `YOUR_xxx` / `BASE64_xxx` |
-| 行情 `HTTP_403` | 网关限流，降频等待；不是配置问题 |
+| 行情 `HTTP_403` | 该渠道无 REST 行情权限（与交易权限分开授权），需联系 uSMART；`usmart doctor --online` 会单独报这一项。WebSocket 推送不受影响 |

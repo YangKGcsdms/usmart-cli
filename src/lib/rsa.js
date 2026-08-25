@@ -68,6 +68,21 @@ export function encryptField(plainText, publicKeyBase64) {
 }
 
 /**
+ * 由签名私钥导出对应的验签公钥（Base64 DER/SPKI）。
+ *
+ * uSMART 用的是两套不同的密钥：配置里的 `publicKey` 是 uSMART 给的**数据加密**公钥
+ * （加密手机号/密码用），`privateKey` 是**你自己的签名私钥**，uSMART 持有与之配对的
+ * 验签公钥。两者不是一对 —— 换签名私钥时必须让 uSMART 同步更新验签公钥，
+ * 否则所有请求都会被判为「非法 OPEN 请求」(107012)。
+ *
+ * 这个函数把当前私钥对应的验签公钥算出来，方便与提交给 uSMART 的那份比对。
+ */
+export function deriveSigningPublicKey(base64PrivateKey) {
+  const priv = loadPrivateKey(base64PrivateKey);
+  return crypto.createPublicKey(priv).export({ type: 'spki', format: 'der' }).toString('base64');
+}
+
+/**
  * 登录请求签名：仅对 JSON Body 签名，输出标准 Base64。
  * 对应 Java UsmartRsaUtil.signBody
  */
