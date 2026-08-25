@@ -203,7 +203,7 @@ describe('quote (REST)', { skip: QUOTE.ok ? false : QUOTE.reason }, () => {
 
   describe('api / dict / 输出格式 / 兼容别名', () => {
     it('api POST get-trade-status', () => expectOk(['api', 'POST', '/user-server/open-api/get-trade-status']));
-    it('api --quote', { skip: process.env.USMART_SKIP_QUOTE ? '行情网关限流中' : false }, () => expectOk(['api', 'POST', '/quotes-openservice/api/v1/marketstate', '--quote', '--data', '{"market":"hk"}']));
+    it('api --quote（走行情 host）', { skip: QUOTE.ok ? false : QUOTE.reason }, () => expectOk(['api', 'POST', '/quotes-openservice/api/v1/marketstate', '--quote', '--data', '{"market":"hk"}']));
     it('api 404 → exit 2 + HTTP_404', () => { const r = run(['api', 'POST', '/no/such/path']); assert.equal(r.code, 2); assert.equal(r.json.error.code, 'HTTP_404'); assert.equal(r.json.error.http_status, 404); });
     it('api 业务错误 → exit 2 + 业务码 + hint', () => { const r = run(['api', 'POST', '/stock-order-server/open-api/modified-range', '--data', '{"entrustId":1,"newPrice":1}']); assert.equal(r.code, 2); assert.equal(r.json.error.code, '409933'); assert.ok(r.json.error.hint); });
     it('legacy: usmart usmart holding（带弃用提示）', () => { const r = run(['usmart', 'holding']); assert.equal(r.code, 0); assert.match(r.stderr, /已弃用/); assert.equal(String(r.json.code), '0'); });
