@@ -48,6 +48,8 @@
 - **密码管理**（6 个）：设置/修改/重置交易密码、修改/重置登录密码、校验交易密码
 - **验证码登录**：`auth send-captcha` / `auth login-captcha`
 - **出金撤销**：`account cashout-revoke`
+- `order place/modify/cancel` 新增 `--with-password`：随单附带 RSA 加密的交易密码，
+  适配逐单校验而非会话解锁的账户配置（官方 `entrust-order`/`modify-order` 的可选 `password` 字段）
 
 ### 新增能力
 

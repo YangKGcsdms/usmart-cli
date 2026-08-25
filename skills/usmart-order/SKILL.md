@@ -44,6 +44,7 @@ usmart order place --stock-code 00700 --exchange-type 0 \
 | `--price` | 竞价单/市价单传 `0` |
 | `--session-type` | `1`=盘前 `2`=盘后 `3`=暗盘 `12`=盘前盘后，缺省=正常时段 |
 | `--force` | 超 9 倍 24 档时强制委托，**可能变废单** |
+| `--with-password` | 随单附带加密的交易密码（部分账户逐单校验而非会话解锁），`place`/`modify`/`cancel` 均支持 |
 
 `serialNo`（19 位幂等流水号）由 CLI 自动生成，需要自己控制时用 `--serial-no`。
 成功返回 `data.entrustId` —— **后续改单/撤单/查明细都靠它，务必留存**。

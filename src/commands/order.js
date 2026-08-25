@@ -36,9 +36,11 @@ export function registerOrder(program) {
       opt('--order-type <t>', '订单类型 DAY/GTC/GTD（官方暂只支持 DAY）'),
       opt('--valid-date <d>', 'GTD 有效期 yyyy-MM-dd'),
       opt('--serial-no <n>', '自定义流水号（19 位以内唯一整数），缺省自动生成'),
+      opt('--with-password', '随单附带加密的交易密码（部分账户逐单校验而非会话解锁）', { type: 'boolean' }),
     ],
     highRisk: true, requireTrade: true,
     action: (s, o, ctx) => s.call((c) => c.postTrade('/stock-order-server/open-api/entrust-order', ctx.merge(compact({
+      password: o.withPassword ? c.encrypt(ctx.config.account.tradePassword) : undefined,
       serialNo: o.serialNo || nextSerialNo(),
       stockCode: o.stockCode, exchangeType: o.exchangeType, entrustType: side(o.side), entrustProp: o.entrustProp,
       entrustPrice: o.price, entrustAmount: o.amount, stockName: o.stockName, sessionType: o.sessionType,
@@ -54,21 +56,27 @@ export function registerOrder(program) {
       opt('--price <n>', '新委托价格', { type: 'number', required: true }),
       opt('--amount <n>', '新委托数量', { type: 'number', required: true }),
       opt('--force', '强制委托（forceEntrustFlag）', { type: 'boolean' }),
+      opt('--with-password', '随单附带加密的交易密码', { type: 'boolean' }),
     ],
     highRisk: true, requireTrade: true,
     action: (s, o, ctx) => s.call((c) => c.postTrade('/stock-order-server/open-api/modify-order', ctx.merge(compact({
       entrustId: o.entrustId, actionType: 1, entrustPrice: o.price, entrustAmount: o.amount, forceEntrustFlag: o.force ? true : undefined,
+      password: o.withPassword ? c.encrypt(ctx.config.account.tradePassword) : undefined,
     }))), { requireTrade: true }),
   });
 
   order.add({
     name: 'cancel', legacy: 'cancel-order',
     description: '撤单（高风险，需要 --yes）',
-    options: [opt('--entrust-id <id>', '委托 ID', { required: true })],
+    options: [
+      opt('--entrust-id <id>', '委托 ID', { required: true }),
+      opt('--with-password', '随单附带加密的交易密码', { type: 'boolean' }),
+    ],
     highRisk: true, requireTrade: true,
-    action: (s, o, ctx) => s.call((c) => c.postTrade('/stock-order-server/open-api/modify-order', ctx.merge({
+    action: (s, o, ctx) => s.call((c) => c.postTrade('/stock-order-server/open-api/modify-order', ctx.merge(compact({
       entrustId: o.entrustId, actionType: 0, entrustAmount: 0, entrustPrice: 0,
-    })), { requireTrade: true }),
+      password: o.withPassword ? c.encrypt(ctx.config.account.tradePassword) : undefined,
+    }))), { requireTrade: true }),
   });
 
   order.add({
