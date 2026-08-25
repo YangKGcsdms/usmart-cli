@@ -13,21 +13,27 @@ describe('rsa', () => {
     privateKeyBase64 = privateKey.export({ type: 'pkcs8', format: 'der' }).toString('base64');
   });
 
-  it('encryptField 使用公钥加密，结果可用对应私钥解密', () => {
+  // 说明：不做「加密后再用私钥解密」的往返验证。Node 18.19+ 因 CVE-2023-46809（Marvin 攻击）
+  // 禁止了 RSA_PKCS1_PADDING 的**私钥解密**，往返测试会在 CI 的 Node 18 上直接抛错。
+  // 公钥加密（我们实际用到的方向）不受影响，因此这里改为验证密文的形态与随机性。
+  it('encryptField 用公钥做 PKCS1 加密，输出 URL-safe Base64', () => {
     const plain = '13800138000';
     const encrypted = encryptField(plain, publicKeyBase64);
-    assert.ok(encrypted.length > 0);
 
-    const privateKey = crypto.createPrivateKey({
-      key: Buffer.from(privateKeyBase64, 'base64'),
-      format: 'der',
-      type: 'pkcs8',
-    });
-    const decrypted = crypto.privateDecrypt(
-      { key: privateKey, padding: crypto.constants.RSA_PKCS1_PADDING },
-      Buffer.from(encrypted, 'base64url')
-    );
-    assert.equal(decrypted.toString('utf-8'), plain);
+    // 2048 位密钥 → 密文 256 字节
+    assert.equal(Buffer.from(encrypted, 'base64url').length, 256);
+    // URL-safe Base64：不含 + / =
+    assert.match(encrypted, /^[A-Za-z0-9_-]+$/);
+    // PKCS1 v1.5 填充带随机数，同一明文两次加密结果必须不同
+    assert.notEqual(encrypted, encryptField(plain, publicKeyBase64));
+  });
+
+  it('encryptField 对非法公钥给出清晰错误', () => {
+    assert.throws(() => encryptField('x', 'not-a-key'), /publicKey 格式错误/);
+  });
+
+  it('signBody / signWithHeaders 对非法私钥给出清晰错误', () => {
+    assert.throws(() => signBody('{}', 'not-a-key'), /privateKey 格式错误/);
   });
 
   it('signBody 对 JSON body 签名，可用公钥验签', () => {
