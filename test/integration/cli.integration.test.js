@@ -125,16 +125,34 @@ describe('integration: usmart-cli 只读命令', { skip: !ENABLED && 'set USMART
     it('tick', () => { const j = expectOk(['quote', 'tick', '--secu-id', 'usAAPL', '--count', '5']); assert.ok(Array.isArray(j.data.list)); });
     it('order-book', () => { const j = expectOk(['quote', 'order-book', '--secu-id', 'hk00700']); assert.ok(j.data); });
     it('basicinfo（低频 20/min，仅调一次）', () => { const j = expectOk(['quote', 'basicinfo', '--market', 'hk']); assert.ok(j.data.list.length > 100); assert.ok('lotSize' in j.data.list[0]); });
-    it('subscribe 6s（WebSocket 鉴权+订阅+退出）', () => {
-      const r = run(['quote', 'subscribe', '--topics', 'rt.hk.00700,rt.us.AAPL', '--duration', '6s'], { timeout: 40_000 });
+    it('subscribe：WebSocket 鉴权 + 订阅 + 收数据 + 退出', () => {
+      const r = run(['quote', 'subscribe', '--topics', 'rt.hk.00700,ob.hk.00700,rt.us.AAPL', '--duration', '10s'], { timeout: 60_000 });
       assert.equal(r.code, 0, `exit=${r.code} stderr=${r.stderr}`);
       assert.match(r.stderr, /"event":"auth","ok":true/);
       assert.match(r.stderr, /"event":"sub","ok":true/);
       assert.match(r.stderr, /订阅结束/);
+      // 每行都必须是可解析的 NDJSON，且 topic 在订阅列表内
+      const subscribed = new Set(['rt.hk.00700', 'ob.hk.00700', 'rt.us.AAPL']);
       for (const line of r.stdout.trim().split('\n').filter(Boolean)) {
         const m = JSON.parse(line);
-        assert.ok(m.topic && m.data, line);
+        assert.ok(subscribed.has(m.topic), `未订阅的 topic：${m.topic}`);
+        assert.ok(m.data && typeof m.data === 'object', line.slice(0, 200));
+        assert.ok(m.receivedAt);
       }
+      // 收市时段可能一条都没有，只在有数据时校验字段形状
+      const rt = r.stdout.trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((m) => m.topic.startsWith('rt.'));
+      if (rt) assert.ok(typeof rt.data.latestPrice === 'number', JSON.stringify(rt.data).slice(0, 200));
+    });
+    it('subscribe 拒绝非法 topic', () => {
+      const r = run(['quote', 'subscribe', '--topics', 'bad.topic']);
+      assert.equal(r.code, 3);
+      assert.match(r.json.error.hint, /rt\|tk\|ob/);
+    });
+    it('subscribe 超过 10 个 topic 本地就拦下', () => {
+      const many = Array.from({ length: 11 }, (_, i) => `rt.hk.0000${i}`).join(',');
+      const r = run(['quote', 'subscribe', '--topics', many]);
+      assert.equal(r.code, 3);
+      assert.match(r.json.error.message, /最多订阅 10 个/);
     });
     it('subscribe --dry-run', () => { const j = expectOk(['quote', 'subscribe', '--topics', 'rt.hk.00700', '--dry-run']); assert.equal(j.request.method, 'WS'); });
   });
