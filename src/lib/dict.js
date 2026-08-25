@@ -155,7 +155,7 @@ export const DICTS = {
       'realtime/timeline/kline/tick/marketstate/orderbook': 120,
       basicinfo: 20,
       'push 订阅': '最多 10 个 topic，每秒最多订阅/取消 10 个',
-      '（文档未列）行情 REST 403': '网关层 HTTP 403（openresty，无业务码、无 Retry-After）。已验证与来源 IP、token、客户端版本无关，按渠道号判定；同一 token 的 WebSocket 推送不受影响。401=token 无效，403=token 有效但无权限',
+      '（文档未列）行情 REST 网关语义': '行情网关在业务层之前先判定，返回裸 HTTP 状态码（openresty HTML，无业务码、无 Retry-After）：400=缺 Authorization/X-Sign；401=token 无效；403=token 有效但该渠道无 REST 行情权限。已实测与来源 IP、客户端版本、请求头组合均无关；同一 token 的 WebSocket 推送不受影响，可作为降级方案',
     },
   },
   'kline-quota': {
