@@ -165,6 +165,86 @@ describe('quote (REST)', { skip: QUOTE.ok ? false : QUOTE.reason }, () => {
     it('basicinfo（低频 20/min，仅调一次）', () => { const j = expectOk(['quote', 'basicinfo', '--market', 'hk']); assert.ok(j.data.list.length > 100); assert.ok('lotSize' in j.data.list[0]); });
   });
 
+  /**
+   * 降级路径：REST 被网关 403 拒绝时，realtime / order-book 改走 WebSocket 取快照。
+   * 这一组**始终运行** —— REST 通时验证走 REST，REST 被拒时验证降级确实生效，
+   * 两种情况下用户敲的命令都必须能拿到数据。
+   */
+  describe('quote (realtime / order-book 端到端 —— REST 或 WebSocket 降级)', () => {
+    /** 命令要么拿到行情，要么因非交易时段无推送而明确报 push_no_data；两者都算正确。 */
+    function expectQuoteOrNoData(args, check) {
+      const r = run(args, { timeout: 60_000 });
+      if (r.code === 0) {
+        assert.ok(r.json, r.stdout.slice(0, 200));
+        assert.equal(String(r.json.code), '0');
+        if (!QUOTE.ok) {
+          assert.equal(r.json._via, 'websocket', 'REST 不可用时应标明数据来自降级');
+          assert.match(r.json._note, /403/);
+        }
+        check(r.json);
+        return 'got-data';
+      }
+      // 非交易时段/停牌：推送没有数据，必须给出明确原因而不是空结果
+      assert.equal(r.code, 2, r.stdout.slice(0, 300));
+      assert.equal(r.json.error.type, 'push_no_data');
+      assert.match(r.json.error.hint, /行情变动|非交易时段/);
+      assert.ok(Array.isArray(r.json.error.details.topics));
+      return 'no-data';
+    }
+
+    it('realtime 单只：拿到报价，或明确报无推送', () => {
+      const how = expectQuoteOrNoData(['quote', 'realtime', '--secu-ids', 'hk00700', '--ws-timeout', '15s'], (j) => {
+        const q = j.data.list[0];
+        assert.equal(q.symbol, '00700');
+        assert.equal(typeof q.latestPrice, 'number');
+      });
+      process.stderr.write(`      (realtime hk00700 → ${how})\n`);
+    });
+
+    it('realtime 多只：每只各自取到快照', () => {
+      expectQuoteOrNoData(['quote', 'realtime', '--secu-ids', 'hk00700,hk09988', '--ws-timeout', '15s'], (j) => {
+        assert.ok(j.data.list.length >= 1);
+        for (const q of j.data.list) assert.ok(q.symbol && typeof q.latestPrice === 'number');
+      });
+    });
+
+    it('order-book：拿到买卖档位，或明确报无推送', () => {
+      expectQuoteOrNoData(['quote', 'order-book', '--secu-id', 'hk00700', '--ws-timeout', '15s'], (j) => {
+        const lv = (j.data.data || j.data.list || [])[0];
+        assert.ok(lv, JSON.stringify(j.data).slice(0, 200));
+        assert.equal(typeof lv.bidPrice, 'number');
+        assert.equal(typeof lv.askPrice, 'number');
+      });
+    });
+
+    it('--no-ws-fallback 时不降级，REST 是什么就报什么', { skip: QUOTE.ok ? 'REST 正常，无需验证降级开关' : false }, () => {
+      const r = run(['quote', 'realtime', '--secu-ids', 'hk00700', '--no-ws-fallback']);
+      assert.equal(r.code, 2);
+      assert.equal(r.json.error.code, 'HTTP_403');
+    });
+
+    it('无法降级的接口（kline/timeline/tick/marketstate/basicinfo）不会伪造数据', { skip: QUOTE.ok ? 'REST 正常' : false }, () => {
+      for (const args of [
+        ['quote', 'kline', '--secu-id', 'hk00700', '--count', '2'],
+        ['quote', 'timeline', '--secu-id', 'hk00700'],
+        ['quote', 'tick', '--secu-id', 'hk00700', '--count', '2'],
+        ['quote', 'market-state', '--market', 'hk'],
+        ['quote', 'basicinfo', '--market', 'hk'],
+      ]) {
+        const r = run(args);
+        assert.equal(r.code, 2, `${args.join(' ')} 应如实报错`);
+        assert.equal(r.json.error.code, 'HTTP_403');
+        assert.ok(!r.json._via, '这些接口不应声称走了降级');
+      }
+    });
+
+    it('secuId 格式非法在本地就被拦下', () => {
+      const r = run(['quote', 'realtime', '--secu-ids', 'AAPL']);
+      assert.ok([2, 3].includes(r.code));
+      if (r.code === 3) assert.match(r.json.error.hint, /hk\|us\|sh\|sz/);
+    });
+  });
+
   describe('quote (WebSocket 推送 —— 不受 REST 403 影响，始终运行)', () => {
     it('subscribe：WebSocket 鉴权 + 订阅 + 收数据 + 退出', () => {
       const r = run(['quote', 'subscribe', '--topics', 'rt.hk.00700,ob.hk.00700,rt.us.AAPL', '--duration', '10s'], { timeout: 60_000 });
