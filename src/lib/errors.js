@@ -75,6 +75,7 @@ export const ERROR_CODES = {
   '310104': { msg: '交易密码错误', hint: '检查 account.tradePassword；连续错误会锁定' },
   '310106': { msg: '未设置交易密码', hint: '先执行 usmart account set-trade-password' },
   '107004': { msg: '服务不可用', hint: '接口路径不存在或服务下线，检查 path' },
+  '107008': { msg: '签名、渠道不能为空', hint: '请求缺少 X-Sign 或 X-Channel 头' },
   '107012': { msg: '非法 OPEN 请求（签名验证未通过）', hint: 'uSMART 登记的验签公钥与当前 account.privateKey 不匹配。跑 `usmart doctor` 看当前私钥对应的验签公钥，与提交给 uSMART 的那份比对；也可能是渠道号或环境地址用错（如生产凭据打 UAT）' },
   '409933': { msg: '未查询到记录', hint: '检查 entrustId / serialNo 是否正确；订单明细库只保留较近的订单' },
   '409985': { msg: '参数不合法', hint: '对照 usmart <domain> <cmd> --help 与 usmart dict 检查字段类型与枚举取值' },
