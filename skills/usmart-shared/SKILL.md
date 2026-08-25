@@ -33,7 +33,7 @@ domain：`auth` `account` `order` `quote` `ipo` `ma` `option` `dict`，外加 `d
 | `--dry-run` | 只打印将发起的请求（method/url/body/脱敏 header），不发送 |
 | `--yes` | 确认执行高风险写操作 |
 | `--config <path>` | 直接指定配置文件，优先于 `--profile` |
-| `--data <json\|@file>` | 追加/覆盖请求体字段，用于命令没暴露的参数 |
+| `--data <json\|@file>` | 追加/覆盖请求体字段，用于命令没暴露的参数。**给了 `--data` 时必填校验降级为 stderr 提示**，方便整体手搓请求体 |
 
 ## 判断成败：先看退出码
 

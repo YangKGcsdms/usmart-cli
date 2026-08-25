@@ -74,7 +74,7 @@ export function registerAuth(program) {
     name: 'send-captcha',
     description: '发送手机/邮箱验证码（默认 type=106 短信登录；见 usmart dict get captcha-type）',
     options: [opt('--type <n>', '验证码类型', { type: 'int', default: '106', choices: [101, 102, 103, 104, 105, 106] })],
-    allowData: false, auth: false,
+    allowData: false,
     action: (session, o) => session.call((c) => c.sendCaptcha(o.type), { auth: false }),
   });
 

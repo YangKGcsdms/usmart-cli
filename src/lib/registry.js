@@ -14,8 +14,8 @@ import { CliError, EXIT, toCliError, describeCode } from './errors.js';
  *   options?: [opt(...)],
  *   requireTrade?: boolean,      // 需要交易解锁
  *   highRisk?: boolean,          // 写操作：不带 --yes 退出码 10；--dry-run 可预览
- *   auth?: boolean,              // false = 不需要登录态
  *   allowData?: boolean,         // 额外接受 --data（合并/覆盖请求体），默认 true
+ *                                //   给了 --data 时必填校验降级为提示：用户在手搓请求体（1.x 的用法）
  *   action(session, opts, ctx) → Promise<response>
  *   readOnlyStatus?: boolean     // login/unlock 这类：动作完成后输出会话状态
  * }
@@ -32,9 +32,8 @@ export function registerCommand(parent, def) {
 
 export function applyOptions(cmd, def) {
   for (const o of def.options || []) {
-    const flags = o.required && !o.default ? o.flags : o.flags;
     const desc = o.required ? `${o.desc}（必填）` : o.desc;
-    cmd.option(flags, desc, o.default);
+    cmd.option(o.flags, desc, o.default);
   }
   if (def.allowData !== false) cmd.option('--data <json>', '额外请求体字段（JSON 或 @文件），会合并/覆盖命令参数');
   cmd.option('--config <path>', '配置文件路径（优先于 --profile）');
@@ -69,9 +68,15 @@ export function makeHandler(def, { legacyName } = {}) {
         return;
       }
 
-      // 2. 参数校验
-      const opts = validateOptions(options, def.options || []);
+      // 2. 参数校验。
+      //    显式给了 --data 时说明用户在手搓请求体（1.x 的老用法），此时把必填校验降级为
+      //    stderr 提示，交给服务端判断；命令没给的字段会被 compact/JSON.stringify 丢掉，
+      //    不会退化成「静默发送 entrustId: 0」那种情况。
       const extra = def.allowData !== false ? parseData(options.data) : {};
+      const hasData = Object.keys(extra).length > 0;
+      const opts = validateOptions(options, def.options || [], { relaxRequired: hasData, onRelaxed: (missing) => {
+        process.stderr.write(`[usmart] 已提供 --data，跳过必填校验：${missing.join(', ')}\n`);
+      } });
 
       // 3. 配置 + 会话
       const config = readUsmartConfig({ configPath: options.config, profile });
@@ -94,7 +99,10 @@ export function makeHandler(def, { legacyName } = {}) {
       if (!isSuccess(result)) {
         const err = apiError(result);
         const d = describeCode(err.code);
-        if (d) { err.hint = d.hint || undefined; if (!err.message || err.message === `uSMART 返回错误码 ${err.code}`) err.message = d.msg; }
+        if (d) {
+          if (d.hint) err.hint = d.hint;
+          if (!err.message || err.message === `uSMART 返回错误码 ${err.code}`) err.message = d.msg;
+        }
         throw err;
       }
       emit(result, { format, jq });

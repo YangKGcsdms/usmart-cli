@@ -166,6 +166,15 @@ describe('integration: usmart-cli 只读命令', { skip: !ENABLED && 'set USMART
     it('api 业务错误 → exit 2 + 业务码 + hint', () => { const r = run(['api', 'POST', '/stock-order-server/open-api/modified-range', '--data', '{"entrustId":1,"newPrice":1}']); assert.equal(r.code, 2); assert.equal(r.json.error.code, '409933'); assert.ok(r.json.error.hint); });
     it('legacy: usmart usmart holding（带弃用提示）', () => { const r = run(['usmart', 'holding']); assert.equal(r.code, 0); assert.match(r.stderr, /已弃用/); assert.equal(String(r.json.code), '0'); });
     it('legacy: usmart usmart api', () => { const r = run(['usmart', 'api', 'POST', '/user-server/open-api/get-trade-status']); assert.equal(r.code, 0); });
+    it('legacy: 1.x 的 --data 整体请求体用法仍可用（place-order --data @file）', () => {
+      const f = path.join(os.tmpdir(), 'usmart-order-test.json');
+      fs.writeFileSync(f, JSON.stringify({ stockCode: '00700', exchangeType: 0, entrustType: 0, entrustProp: 'e', entrustPrice: 330.4, entrustAmount: 100 }));
+      const r = run(['usmart', 'place-order', '--data', `@${f}`, '--dry-run']);
+      assert.equal(r.code, 0, r.stdout);
+      assert.equal(r.json.request.body.stockCode, '00700');
+      assert.match(r.stderr, /跳过必填校验/);
+      fs.rmSync(f, { force: true });
+    });
     it('legacy: usmart usmart rate-info（修复后可用）', () => { const r = run(['usmart', 'rate-info']); assert.equal(r.code, 0); assert.ok('usdRateValue' in r.json.data); });
     it('--format table', () => { const r = run(['--format', 'table', 'account', 'holding']); assert.equal(r.code, 0); assert.match(r.stdout, /stockCode/); });
     it('--format csv', () => { const r = run(['--format', 'csv', 'account', 'exchange-rate']); assert.equal(r.code, 0); assert.match(r.stdout.split('\n')[0], /yxBuyRate/); });

@@ -18,8 +18,13 @@ export function attrName(flags) {
   return new Option(flags).attributeName();
 }
 
-/** 把 commander 解析出的 opts 按 specs 做必填/类型/枚举校验并做类型转换。 */
-export function validateOptions(opts, specs) {
+/**
+ * 把 commander 解析出的 opts 按 specs 做必填/类型/枚举校验并做类型转换。
+ * @param {object} [o]
+ * @param {boolean} [o.relaxRequired] 为 true 时不因缺必填而报错（用户用 --data 手搓请求体）
+ * @param {(missing: string[]) => void} [o.onRelaxed]
+ */
+export function validateOptions(opts, specs, { relaxRequired = false, onRelaxed } = {}) {
   const missing = [];
   const invalid = [];
   const out = { ...opts };
@@ -42,6 +47,10 @@ export function validateOptions(opts, specs) {
       continue;
     }
     out[name] = v;
+  }
+  if (relaxRequired && missing.length) {
+    if (onRelaxed) onRelaxed(missing);
+    missing.length = 0;
   }
   if (missing.length || invalid.length) {
     const parts = [];

@@ -154,7 +154,7 @@ export function registerAccount(program) {
     name: 'reset-login-password',
     description: '通过短信验证码重置登录密码（高风险，需要 --yes；不需要登录态；先 send-captcha --type 102）',
     options: [opt('--password <pwd>', '新登录密码', { required: true }), opt('--captcha <code>', '短信验证码', { required: true })],
-    highRisk: true, auth: false,
+    highRisk: true,
     action: (s, o, ctx) => s.call((c) => c.postTrade('/user-server/open-api/reset-login-password', ctx.merge({
       phoneNumber: c.encrypt(ctx.config.account.phoneNumber), areaCode: ctx.config.account.areaCode,
       password: c.encrypt(o.password), phoneCaptcha: o.captcha,

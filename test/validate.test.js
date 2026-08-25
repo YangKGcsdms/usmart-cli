@@ -25,6 +25,15 @@ describe('validate', () => {
   it('整数字段传小数 → exit 3', () => {
     assert.throws(() => validateOptions({ stockCode: 'A', exchangeType: '1.5' }, specs), (e) => e.exitCode === EXIT.INVALID_ARGS);
   });
+  it('relaxRequired 时跳过必填校验并回调（--data 手搓请求体的 1.x 用法）', () => {
+    let reported = null;
+    const o = validateOptions({ exchangeType: '5' }, specs, { relaxRequired: true, onRelaxed: (m) => { reported = m; } });
+    assert.equal(o.exchangeType, 5);
+    assert.deepEqual(reported, ['--stock-code <code>']);
+  });
+  it('relaxRequired 不会放过类型/枚举错误', () => {
+    assert.throws(() => validateOptions({ exchangeType: '9' }, specs, { relaxRequired: true }), (e) => e.exitCode === EXIT.INVALID_ARGS);
+  });
   it('parseData：JSON / 空 / 非法', () => {
     assert.deepEqual(parseData('{"a":1}'), { a: 1 });
     assert.deepEqual(parseData(undefined), {});
