@@ -52,3 +52,6 @@ usmart.json
 tmp/
 temp/
 *.tmp
+
+# npm pack 产物
+*.tgz
