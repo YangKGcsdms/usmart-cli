@@ -45,6 +45,7 @@ describe('UsmartSessionManager', () => {
       const handler = responses.shift() || (() => ({ code: '0', msg: 'ok', data: {} }));
       const result = handler(url, init, body);
       return {
+        ok: true, status: 200,
         text: async () => JSON.stringify(result),
       };
     };

@@ -33,7 +33,7 @@ describe('UsmartClient', () => {
     lastRequest = null;
     globalThis.fetch = async (url, init) => {
       lastRequest = { url, init };
-      return { text: async () => JSON.stringify({ code: '0', msg: 'ok', data: {} }) };
+      return { ok: true, status: 200, text: async () => JSON.stringify({ code: '0', msg: 'ok', data: {} }) };
     };
   });
 
@@ -54,7 +54,8 @@ describe('UsmartClient', () => {
     assert.equal(headers['X-Dt'], 't5');
     assert.equal(headers['Authorization'], 'token123');
     assert.ok(headers['X-Sign']);
-    assert.ok(headers['X-Request-Id']);
+    assert.match(headers['X-Request-Id'], /^\d{19}$/);
+    assert.match(headers['X-Time'], /^\d{10}$/);
   });
 
   it('postQuote 应包含 X-Time 并使用行情 host', async () => {
@@ -71,6 +72,7 @@ describe('UsmartClient', () => {
 
   it('login 成功后应保存 token', async () => {
     globalThis.fetch = async () => ({
+      ok: true, status: 200,
       text: async () => JSON.stringify({ code: '0', msg: 'ok', data: { token: 'new-token' } }),
     });
     const client = new UsmartClient(generateConfig());
